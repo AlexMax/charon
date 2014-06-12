@@ -181,3 +181,271 @@ func (packet *AuthNegotiate) UnmarshalBinary(data []byte) (err error) {
 	packet.username = strings.TrimRight(username, "\x00")
 	return
 }
+
+type ServerEphemeral struct {
+	session   uint32
+	ephemeral []byte
+}
+
+func (packet *ServerEphemeral) MarshalBinary() (data []byte, err error) {
+	var buffer bytes.Buffer
+
+	err = binary.Write(&buffer, binary.LittleEndian, SERVER_EPHEMERAL)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.session)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, uint16(len(packet.ephemeral)))
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.ephemeral)
+	if err != nil {
+		return
+	}
+
+	data = buffer.Bytes()
+	return
+}
+
+func (packet *ServerEphemeral) UnmarshalBinary(data []byte) (err error) {
+	buffer := bytes.NewBuffer(data)
+
+	var header uint32
+	err = binary.Read(buffer, binary.LittleEndian, &header)
+	if err != nil {
+		return
+	}
+	if header != SERVER_EPHEMERAL {
+		return errors.New("packet has incorrect header")
+	}
+
+	var session uint32
+	err = binary.Read(buffer, binary.LittleEndian, &session)
+	if err != nil {
+		return
+	}
+
+	var ephemerallen uint16
+	err = binary.Read(buffer, binary.LittleEndian, &ephemerallen)
+	if err != nil {
+		return
+	}
+
+	var ephemeral = make([]byte, ephemerallen)
+	err = binary.Read(buffer, binary.LittleEndian, &ephemeral)
+	if err != nil {
+		return
+	}
+
+	packet.session = session
+	packet.ephemeral = ephemeral
+	return
+}
+
+type AuthEphemeral struct {
+	session   uint32
+	ephemeral []byte
+}
+
+func (packet *AuthEphemeral) MarshalBinary() (data []byte, err error) {
+	var buffer bytes.Buffer
+
+	err = binary.Write(&buffer, binary.LittleEndian, AUTH_EPHEMERAL)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.session)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, uint16(len(packet.ephemeral)))
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.ephemeral)
+	if err != nil {
+		return
+	}
+
+	data = buffer.Bytes()
+	return
+}
+
+func (packet *AuthEphemeral) UnmarshalBinary(data []byte) (err error) {
+	buffer := bytes.NewBuffer(data)
+
+	var header uint32
+	err = binary.Read(buffer, binary.LittleEndian, &header)
+	if err != nil {
+		return
+	}
+	if header != AUTH_EPHEMERAL {
+		return errors.New("packet has incorrect header")
+	}
+
+	var session uint32
+	err = binary.Read(buffer, binary.LittleEndian, &session)
+	if err != nil {
+		return
+	}
+
+	var ephemerallen uint16
+	err = binary.Read(buffer, binary.LittleEndian, &ephemerallen)
+	if err != nil {
+		return
+	}
+
+	var ephemeral = make([]byte, ephemerallen)
+	err = binary.Read(buffer, binary.LittleEndian, &ephemeral)
+	if err != nil {
+		return
+	}
+
+	packet.session = session
+	packet.ephemeral = ephemeral
+	return
+}
+
+type ServerProof struct {
+	session uint32
+	proof   []byte
+}
+
+func (packet *ServerProof) MarshalBinary() (data []byte, err error) {
+	var buffer bytes.Buffer
+
+	err = binary.Write(&buffer, binary.LittleEndian, SERVER_PROOF)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.session)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, uint16(len(packet.proof)))
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.proof)
+	if err != nil {
+		return
+	}
+
+	data = buffer.Bytes()
+	return
+}
+
+func (packet *ServerProof) UnmarshalBinary(data []byte) (err error) {
+	buffer := bytes.NewBuffer(data)
+
+	var header uint32
+	err = binary.Read(buffer, binary.LittleEndian, &header)
+	if err != nil {
+		return
+	}
+	if header != SERVER_PROOF {
+		return errors.New("packet has incorrect header")
+	}
+
+	var session uint32
+	err = binary.Read(buffer, binary.LittleEndian, &session)
+	if err != nil {
+		return
+	}
+
+	var prooflen uint16
+	err = binary.Read(buffer, binary.LittleEndian, &prooflen)
+	if err != nil {
+		return
+	}
+
+	var proof = make([]byte, prooflen)
+	err = binary.Read(buffer, binary.LittleEndian, &proof)
+	if err != nil {
+		return
+	}
+
+	packet.session = session
+	packet.proof = proof
+	return
+}
+
+type AuthProof struct {
+	session uint32
+	proof   []byte
+}
+
+func (packet *AuthProof) MarshalBinary() (data []byte, err error) {
+	var buffer bytes.Buffer
+
+	err = binary.Write(&buffer, binary.LittleEndian, AUTH_PROOF)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.session)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, uint16(len(packet.proof)))
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.proof)
+	if err != nil {
+		return
+	}
+
+	data = buffer.Bytes()
+	return
+}
+
+func (packet *AuthProof) UnmarshalBinary(data []byte) (err error) {
+	buffer := bytes.NewBuffer(data)
+
+	var header uint32
+	err = binary.Read(buffer, binary.LittleEndian, &header)
+	if err != nil {
+		return
+	}
+	if header != AUTH_PROOF {
+		return errors.New("packet has incorrect header")
+	}
+
+	var session uint32
+	err = binary.Read(buffer, binary.LittleEndian, &session)
+	if err != nil {
+		return
+	}
+
+	var prooflen uint16
+	err = binary.Read(buffer, binary.LittleEndian, &prooflen)
+	if err != nil {
+		return
+	}
+
+	var proof = make([]byte, prooflen)
+	err = binary.Read(buffer, binary.LittleEndian, &proof)
+	if err != nil {
+		return
+	}
+
+	packet.session = session
+	packet.proof = proof
+	return
+}
