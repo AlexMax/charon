@@ -1,7 +1,7 @@
 package main
 
-import "github.com/AlexMax/charon/auth"
+import "github.com/AlexMax/charon"
 
 func main() {
-	auth.New()
+	charon.New()
 }

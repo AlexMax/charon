@@ -16,17 +16,19 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package auth
+package charon
 
 import (
 	"encoding/binary"
 	"errors"
 	"log"
 	"net"
-
-	"github.com/AlexMax/charon/proto"
-	_ "github.com/tadglines/go-pkgs/crypto/srp"
 )
+
+type request struct {
+	address *net.UDPAddr
+	message []byte
+}
 
 func New() (err error) {
 	listenaddr, err := net.ResolveUDPAddr("udp", ":16666")
@@ -44,60 +46,73 @@ func New() (err error) {
 
 		msglen, msgaddr, msgerr := conn.ReadFromUDP(message)
 		if msgerr != nil {
+			log.Printf("[ERROR] %s", err.Error())
 			continue
 		}
 
-		go loggedRouter(message[:msglen], msgaddr)
+		req := request{msgaddr, message[:msglen]}
+		go loggedRouter(&req)
 	}
 }
 
-func loggedRouter(message []byte, source *net.UDPAddr) {
-	res, err := router(message, source)
+func loggedRouter(req *request) {
+	err := router(req)
 	if err != nil {
 		log.Printf("[DEBUG] %s", err.Error())
 	}
 }
 
-func router(message []byte, source *net.UDPAddr) (err error) {
-	if len(message) < 4 {
+func router(req *request) (err error) {
+	if len(req.message) < 4 {
 		err = errors.New("Message is too small")
 		return
 	}
 
-	header := binary.LittleEndian.Uint32(message[:4])
+	// Route the message to the appropriate handler.
+	header := binary.LittleEndian.Uint32(req.message[:4])
 	switch header {
-	case proto.SERVER_NEGOTIATE:
-		var packet proto.ServerNegotiate
-		err := packet.UnmarshalBinary(message)
-		if err != nil {
-			return
-		}
-		err := negotiate(&packet)
-	case proto.SERVER_EPHEMERAL:
-		var packet proto.ServerEphemeral
-		err := packet.UnmarshalBinary(message)
-		if err != nil {
-			return
-		}
-		err := ephemeral(&packet)
-	case proto.SERVER_PROOF:
-		var packet proto.ServerProof
-		err := packet.UnmarshalBinary(message)
-		if err != nil {
-			return
-		}
-		err := proof(&packet)
+	case SERVER_NEGOTIATE:
+		err = handleNegotiate(req)
+	case SERVER_EPHEMERAL:
+		err = handleEphemeral(req)
+	case SERVER_PROOF:
+		err = handleProof(req)
+	default:
+		err = errors.New("Invalid packet type")
 	}
+
+	return
 }
 
-func negotiate(packet *proto.ServerNegotiate) (err error) {
+// Handle initial negotiation
+func handleNegotiate(req *request) (err error) {
+	var packet ServerNegotiate
+	err = packet.UnmarshalBinary(req.message)
+	if err != nil {
+		return
+	}
 
+	return
 }
 
-func ephemeral(packet *proto.ServerEphemeral) (err error) {
+// Handle SRP ephemeral exchange
+func handleEphemeral(req *request) (err error) {
+	var packet ServerEphemeral
+	err = packet.UnmarshalBinary(req.message)
+	if err != nil {
+		return
+	}
 
+	return
 }
 
-func proof(packet *proto.ServerProof) (err error) {
+// Handle SRP proof exchange
+func handleProof(req *request) (err error) {
+	var packet ServerProof
+	err = packet.UnmarshalBinary(req.message)
+	if err != nil {
+		return
+	}
 
+	return
 }
