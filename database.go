@@ -67,7 +67,7 @@ type User struct {
 // Try to find a specific user by name or email address.
 func (self *Database) FindUser(username string) (user *User, err error) {
 	user = &User{}
-	err = self.db.Get(&user, "SELECT * FROM users WHERE username LIKE $1 OR email LIKE $1", strings.ToLower(username))
+	err = self.db.Get(user, "SELECT * FROM users WHERE username LIKE $1 OR email LIKE $1", strings.ToLower(username))
 	return
 }
 
