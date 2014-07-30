@@ -28,3 +28,15 @@ func TestNewDatabase(t *testing.T) {
 		t.Errorf("%s", err.Error())
 	}
 }
+
+func TestFindUser(t *testing.T) {
+	database, err := NewDatabase()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
+
+	_, err = database.FindUser("username")
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
+}
