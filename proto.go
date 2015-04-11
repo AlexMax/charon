@@ -26,7 +26,6 @@ import (
 )
 
 const (
-	PROTOCOL_VERSION uint8  = 1
 	SERVER_NEGOTIATE uint32 = 0xD003CA01
 	AUTH_NEGOTIATE   uint32 = 0xD003CA10
 	SERVER_EPHEMERAL uint32 = 0xD003CA02
@@ -38,22 +37,17 @@ const (
 )
 
 type ServerNegotiate struct {
-	username string
+	version       uint8
+	clientSession uint32
+	username      string
 }
 
 func (packet *ServerNegotiate) MarshalBinary() (data []byte, err error) {
 	var buffer bytes.Buffer
 
-	err = binary.Write(&buffer, binary.LittleEndian, SERVER_NEGOTIATE)
-	if err != nil {
-		return
-	}
-
-	err = binary.Write(&buffer, binary.LittleEndian, PROTOCOL_VERSION)
-	if err != nil {
-		return
-	}
-
+	binary.Write(&buffer, binary.LittleEndian, SERVER_NEGOTIATE)
+	binary.Write(&buffer, binary.LittleEndian, packet.version)
+	binary.Write(&buffer, binary.LittleEndian, packet.clientSession)
 	buffer.WriteString(packet.username)
 	buffer.WriteByte(0)
 
@@ -78,8 +72,16 @@ func (packet *ServerNegotiate) UnmarshalBinary(data []byte) (err error) {
 	if err != nil {
 		return
 	}
-	if version != PROTOCOL_VERSION {
-		return errors.New("packet has unknown version")
+	if version == 1 {
+		return errors.New("protocol version 1 is not supported")
+	} else if version != 2 {
+		return errors.New("packet has unknown protocol version")
+	}
+
+	var clientSession uint32
+	err = binary.Read(buffer, binary.LittleEndian, &clientSession)
+	if err != nil {
+		return
 	}
 
 	username, err := buffer.ReadString(0)
@@ -87,44 +89,29 @@ func (packet *ServerNegotiate) UnmarshalBinary(data []byte) (err error) {
 		return
 	}
 
+	packet.version = version
+	packet.clientSession = clientSession
 	packet.username = strings.TrimRight(username, "\x00")
 	return
 }
 
 type AuthNegotiate struct {
-	session  uint32
-	salt     []byte
-	username string
+	version       uint8
+	clientSession uint32
+	session       uint32
+	salt          []byte
+	username      string
 }
 
 func (packet *AuthNegotiate) MarshalBinary() (data []byte, err error) {
 	var buffer bytes.Buffer
 
-	err = binary.Write(&buffer, binary.LittleEndian, AUTH_NEGOTIATE)
-	if err != nil {
-		return
-	}
-
-	err = binary.Write(&buffer, binary.LittleEndian, PROTOCOL_VERSION)
-	if err != nil {
-		return
-	}
-
-	err = binary.Write(&buffer, binary.LittleEndian, packet.session)
-	if err != nil {
-		return
-	}
-
-	err = binary.Write(&buffer, binary.LittleEndian, uint8(len(packet.salt)))
-	if err != nil {
-		return
-	}
-
-	err = binary.Write(&buffer, binary.LittleEndian, packet.salt)
-	if err != nil {
-		return
-	}
-
+	binary.Write(&buffer, binary.LittleEndian, AUTH_NEGOTIATE)
+	binary.Write(&buffer, binary.LittleEndian, packet.version)
+	binary.Write(&buffer, binary.LittleEndian, packet.clientSession)
+	binary.Write(&buffer, binary.LittleEndian, packet.session)
+	binary.Write(&buffer, binary.LittleEndian, uint8(len(packet.salt)))
+	binary.Write(&buffer, binary.LittleEndian, packet.salt)
 	buffer.WriteString(packet.username)
 	buffer.WriteByte(0)
 
@@ -149,8 +136,16 @@ func (packet *AuthNegotiate) UnmarshalBinary(data []byte) (err error) {
 	if err != nil {
 		return
 	}
-	if version != PROTOCOL_VERSION {
-		return errors.New("packet has unknown version")
+	if version == 1 {
+		return errors.New("protocol version 1 is not supported")
+	} else if version != 2 {
+		return errors.New("packet has unknown protocol version")
+	}
+
+	var clientSession uint32
+	err = binary.Read(buffer, binary.LittleEndian, &clientSession)
+	if err != nil {
+		return
 	}
 
 	var session uint32
@@ -176,6 +171,8 @@ func (packet *AuthNegotiate) UnmarshalBinary(data []byte) (err error) {
 		return
 	}
 
+	packet.version = version
+	packet.clientSession = clientSession
 	packet.session = session
 	packet.salt = salt
 	packet.username = strings.TrimRight(username, "\x00")

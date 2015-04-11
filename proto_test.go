@@ -24,10 +24,12 @@ import (
 )
 
 func TestServerNegotiateMarshall(t *testing.T) {
-	expected := []byte("\x01\xCA\x03\xD0\x01username\x00")
+	expected := []byte("\x01\xCA\x03\xD0\x02\xCC\xDD\xEE\xFFusername\x00")
 
 	var packet ServerNegotiate
 	packet.username = "username"
+	packet.version = 2
+	packet.clientSession = 4293844428
 
 	actual, err := packet.MarshalBinary()
 	if err != nil {
@@ -39,14 +41,20 @@ func TestServerNegotiateMarshall(t *testing.T) {
 }
 
 func TestServerNegotiateUnmarshall(t *testing.T) {
-	valid := []byte("\x01\xCA\x03\xD0\x01username\x00")
+	valid := []byte("\x01\xCA\x03\xD0\x02\xCC\xDD\xEE\xFFusername\x00")
 
 	var packet ServerNegotiate
 	err := packet.UnmarshalBinary(valid)
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}
-	if "username" != packet.username {
+	if packet.version != 2 {
+		t.Errorf("Version is %v instead of 2", packet.version)
+	}
+	if packet.clientSession != 4293844428 {
+		t.Errorf("Client Session is %v instead of 4293844428", packet.clientSession)
+	}
+	if packet.username != "username" {
 		t.Errorf("Username is %v instead of username", packet.username)
 	}
 }
@@ -60,7 +68,7 @@ func TestServerNegotiateUnmarshallErrors(t *testing.T) {
 		// Incorrect protocol version
 		[]byte("\x01\xCA\x03\xD0\xFF"),
 		// No null at end of username
-		[]byte("\x01\xCA\x03\xD0\x01username"),
+		[]byte("\x01\xCA\x03\xD0\x02\xCC\xDD\xEE\xFFusername"),
 	}
 
 	var err error
@@ -74,9 +82,11 @@ func TestServerNegotiateUnmarshallErrors(t *testing.T) {
 }
 
 func TestAuthNegotiateMarshall(t *testing.T) {
-	expected := []byte("\x10\xCA\x03\xD0\x01\xFF\xFF\xFF\xFF\x04\x88\x88\x88\x88username\x00")
+	expected := []byte("\x10\xCA\x03\xD0\x02\xCC\xDD\xEE\xFF\xFF\xFF\xFF\xFF\x04\x88\x88\x88\x88username\x00")
 
 	var packet AuthNegotiate
+	packet.version = 2
+	packet.clientSession = 4293844428
 	packet.session = 4294967295
 	packet.salt = []byte("\x88\x88\x88\x88")
 	packet.username = "username"
@@ -91,20 +101,26 @@ func TestAuthNegotiateMarshall(t *testing.T) {
 }
 
 func TestAuthNegotiateUnmarshall(t *testing.T) {
-	valid := []byte("\x10\xCA\x03\xD0\x01\xFF\xFF\xFF\xFF\x04\x88\x88\x88\x88username\x00")
+	valid := []byte("\x10\xCA\x03\xD0\x02\xCC\xDD\xEE\xFF\xFF\xFF\xFF\xFF\x04\x88\x88\x88\x88username\x00")
 
 	var packet AuthNegotiate
 	err := packet.UnmarshalBinary(valid)
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}
-	if 4294967295 != packet.session {
+	if packet.version != 2 {
+		t.Errorf("Version is %v instead of 2", packet.version)
+	}
+	if packet.clientSession != 4293844428 {
+		t.Errorf("Client Session is %v instead of 4293844428", packet.clientSession)
+	}
+	if packet.session != 4294967295 {
 		t.Errorf("Session is %v instead of 4294967295", packet.session)
 	}
-	if !bytes.Equal([]byte{136, 136, 136, 136}, packet.salt) {
+	if !bytes.Equal(packet.salt, []byte{136, 136, 136, 136}) {
 		t.Errorf("Salt is %v instead of [136 136 136 136]", packet.salt)
 	}
-	if "username" != packet.username {
+	if packet.username != "username" {
 		t.Errorf("Username is %v instead of username", packet.username)
 	}
 }
@@ -118,9 +134,9 @@ func TestAuthNegotiateUnmarshallErrors(t *testing.T) {
 		// Incorrect protocol version
 		[]byte("\x10\xCA\x03\xD0\xFF"),
 		// Incorrect salt size
-		[]byte("\x10\xCA\x03\xD0\x01\xFF\xFF\xFF\xFF\xEE\x88\x88\x88\x88"),
+		[]byte("\x10\xCA\x03\xD0\x02\xCC\xDD\xEE\xFF\xFF\xFF\xFF\xFF\xEE\x88\x88\x88\x88"),
 		// Missing username null terminator
-		[]byte("\x10\xCA\x03\xD0\x01\xFF\xFF\xFF\xFF\x04\x88\x88\x88\x88username"),
+		[]byte("\x10\xCA\x03\xD0\x02\xCC\xDD\xEE\xFF\xFF\xFF\xFF\xFF\x04\x88\x88\x88\x88username"),
 	}
 
 	var err error
