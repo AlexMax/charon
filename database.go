@@ -55,13 +55,13 @@ func NewDatabase() (database *Database, err error) {
 
 // A representation of a user.
 type User struct {
-	id       uint
-	username string
-	email    string
-	verifier []byte
-	salt     []byte
-	access   string
-	active   bool
+	Id       uint
+	Username string
+	Email    string
+	Verifier []byte
+	Salt     []byte
+	Access   string
+	Active   bool
 }
 
 // Try to find a specific user by name or email address.
@@ -73,15 +73,15 @@ func (self *Database) FindUser(username string) (user *User, err error) {
 
 // A representation of a user's profile.
 type Profile struct {
-	id                 uint
-	user_id            uint
-	clan               string
-	contactinfo        string
-	country            string
-	gravatar           string
-	location           string
-	message            string
-	username           string
-	visible            bool
-	visible_lastplayed bool
+	Id                 uint
+	User_id            uint
+	Clan               string
+	Contactinfo        string
+	Country            string
+	Gravatar           string
+	Location           string
+	Message            string
+	Username           string
+	Visible            bool
+	Visible_lastplayed bool
 }
