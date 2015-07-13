@@ -27,8 +27,49 @@ func TestRouterShortMessage(t *testing.T) {
 	addr, _ := net.ResolveUDPAddr("udp4", "127.0.0.1:16667")
 	req := request{addr, []byte("\x01")}
 
-	err := router(&req)
+	_, err := router(&req)
 	if err == nil {
 		t.Errorf("%v was incorrectly routed as valid request", req)
+	}
+}
+
+func TestRouterHandleNegotiate(t *testing.T) {
+	addr, _ := net.ResolveUDPAddr("udp4", "127.0.0.1:16667")
+
+	// Assemble packet
+	var packet ServerNegotiate
+	packet.username = "username"
+	packet.version = 2
+	packet.clientSession = 4293844428
+	actual, _ := packet.MarshalBinary()
+
+	// Assemble UDP request
+	req := request{addr, actual}
+
+	route, err := router(&req)
+	if err != nil {
+		t.Errorf("%v request was incorrectly routed", req)
+	}
+
+	// Route request
+	res, err := route(&req)
+	if err != nil {
+		t.Errorf("%v handler returned an error message", route)
+	}
+
+	// Unmarshall response
+	var resPacket AuthNegotiate
+	err = resPacket.UnmarshalBinary(res.message)
+	if err != nil {
+		t.Errorf("Response did not unmarshall correctly")
+	}
+	if resPacket.username != packet.username {
+		t.Errorf("Incorrect username")
+	}
+	if resPacket.version != 2 {
+		t.Errorf("Incorrect version")
+	}
+	if resPacket.clientSession != packet.clientSession {
+		t.Errorf("Incorrect clientSession")
 	}
 }

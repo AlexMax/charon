@@ -19,6 +19,8 @@
 package charon
 
 import (
+	"bytes"
+	"crypto/rand"
 	"encoding/binary"
 	"errors"
 	"log"
@@ -29,6 +31,13 @@ type request struct {
 	address *net.UDPAddr
 	message []byte
 }
+
+type response struct {
+	address *net.UDPAddr
+	message []byte
+}
+
+type routeFunc func(*request) (response, error)
 
 func New() (err error) {
 	listenaddr, err := net.ResolveUDPAddr("udp", ":16666")
@@ -51,18 +60,32 @@ func New() (err error) {
 		}
 
 		req := request{msgaddr, message[:msglen]}
-		go loggedRouter(&req)
+		go requestHandler(&req)
 	}
 }
 
-func loggedRouter(req *request) {
-	err := router(req)
+func requestHandler(req *request) {
+	// Select callback function to route to.
+	route, err := router(req)
 	if err != nil {
 		log.Printf("[DEBUG] %s", err.Error())
 	}
+
+	// Route message to callback function.
+	res, err := route(req)
+	if err != nil {
+		log.Printf("[DEBUG] %s", err.Error())
+	}
+
+	// Respond to sender.
+	conn, err := net.ListenUDP("udp", req.address)
+	if err != nil {
+		log.Printf("[DEBUG] %s", err.Error())
+	}
+	conn.WriteToUDP(res.message, res.address)
 }
 
-func router(req *request) (err error) {
+func router(req *request) (route routeFunc, err error) {
 	if len(req.message) < 4 {
 		err = errors.New("Message is too small")
 		return
@@ -72,11 +95,11 @@ func router(req *request) (err error) {
 	header := binary.LittleEndian.Uint32(req.message[:4])
 	switch header {
 	case SERVER_NEGOTIATE:
-		err = handleNegotiate(req)
+		route = handleNegotiate
 	case SERVER_EPHEMERAL:
-		err = handleEphemeral(req)
+		route = handleEphemeral
 	case SERVER_PROOF:
-		err = handleProof(req)
+		route = handleProof
 	default:
 		err = errors.New("Invalid packet type")
 	}
@@ -85,18 +108,45 @@ func router(req *request) (err error) {
 }
 
 // Handle initial negotiation
-func handleNegotiate(req *request) (err error) {
+func handleNegotiate(req *request) (res response, err error) {
 	var packet ServerNegotiate
 	err = packet.UnmarshalBinary(req.message)
 	if err != nil {
 		return
 	}
 
+	// Create new session
+	sessionBytes := make([]byte, 4)
+	_, err = rand.Read(sessionBytes)
+	if err != nil {
+		return
+	}
+	var sessionID uint32
+	sessionBuffer := bytes.NewBuffer(sessionBytes)
+	err = binary.Read(sessionBuffer, binary.LittleEndian, &sessionID)
+	if err != nil {
+		return
+	}
+
+	// Assemble response
+	var resPacket AuthNegotiate
+	resPacket.clientSession = packet.clientSession
+	resPacket.session = sessionID
+	resPacket.username = packet.username
+	resPacket.version = 2
+	message, err := resPacket.MarshalBinary()
+	if err != nil {
+		return
+	}
+
+	res.address = req.address
+	res.message = message
+
 	return
 }
 
 // Handle SRP ephemeral exchange
-func handleEphemeral(req *request) (err error) {
+func handleEphemeral(req *request) (res response, err error) {
 	var packet ServerEphemeral
 	err = packet.UnmarshalBinary(req.message)
 	if err != nil {
@@ -107,7 +157,7 @@ func handleEphemeral(req *request) (err error) {
 }
 
 // Handle SRP proof exchange
-func handleProof(req *request) (err error) {
+func handleProof(req *request) (res response, err error) {
 	var packet ServerProof
 	err = packet.UnmarshalBinary(req.message)
 	if err != nil {
