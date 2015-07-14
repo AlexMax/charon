@@ -39,6 +39,7 @@ type response struct {
 
 type routeFunc func(*request) (response, error)
 
+// New creates a new instance of the Charon auth server.
 func New() (err error) {
 	listenaddr, err := net.ResolveUDPAddr("udp", ":16666")
 	if err != nil {
@@ -94,11 +95,11 @@ func router(req *request) (route routeFunc, err error) {
 	// Route the message to the appropriate handler.
 	header := binary.LittleEndian.Uint32(req.message[:4])
 	switch header {
-	case SERVER_NEGOTIATE:
+	case CharonServerNegotiate:
 		route = handleNegotiate
-	case SERVER_EPHEMERAL:
+	case CharonServerEphemeral:
 		route = handleEphemeral
-	case SERVER_PROOF:
+	case CharonServerProof:
 		route = handleProof
 	default:
 		err = errors.New("Invalid packet type")

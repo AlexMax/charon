@@ -25,27 +25,31 @@ import (
 	"strings"
 )
 
+// Protocol constants.
 const (
-	SERVER_NEGOTIATE uint32 = 0xD003CA01
-	AUTH_NEGOTIATE   uint32 = 0xD003CA10
-	SERVER_EPHEMERAL uint32 = 0xD003CA02
-	AUTH_EPHEMERAL   uint32 = 0xD003CA20
-	SERVER_PROOF     uint32 = 0xD003CA03
-	AUTH_PROOF       uint32 = 0xD003CA30
-	ERROR_USER       uint32 = 0xD003CAFF
-	ERROR_SESSION    uint32 = 0xD003CAEE
+	CharonServerNegotiate uint32 = 0xD003CA01
+	CharonAuthNegotiate   uint32 = 0xD003CA10
+	CharonServerEphemeral uint32 = 0xD003CA02
+	CharonAuthEphemeral   uint32 = 0xD003CA20
+	CharonServerProof     uint32 = 0xD003CA03
+	CharonAuthProof       uint32 = 0xD003CA30
+	CharonErrorUser       uint32 = 0xD003CAFF
+	CharonErrorSession    uint32 = 0xD003CAEE
 )
 
+// ServerNegotiate is a connection negotiation packet that is sent from the game
+// server to the auth server.
 type ServerNegotiate struct {
 	version       uint8
 	clientSession uint32
 	username      string
 }
 
+// MarshalBinary marshalls a ServerNegotiate from binary data.
 func (packet *ServerNegotiate) MarshalBinary() (data []byte, err error) {
 	var buffer bytes.Buffer
 
-	binary.Write(&buffer, binary.LittleEndian, SERVER_NEGOTIATE)
+	binary.Write(&buffer, binary.LittleEndian, CharonServerNegotiate)
 	binary.Write(&buffer, binary.LittleEndian, packet.version)
 	binary.Write(&buffer, binary.LittleEndian, packet.clientSession)
 	buffer.WriteString(packet.username)
@@ -55,6 +59,7 @@ func (packet *ServerNegotiate) MarshalBinary() (data []byte, err error) {
 	return
 }
 
+// UnmarshalBinary unmarshalls a ServerNegotiate to binary data.
 func (packet *ServerNegotiate) UnmarshalBinary(data []byte) (err error) {
 	buffer := bytes.NewBuffer(data)
 
@@ -63,7 +68,7 @@ func (packet *ServerNegotiate) UnmarshalBinary(data []byte) (err error) {
 	if err != nil {
 		return
 	}
-	if header != SERVER_NEGOTIATE {
+	if header != CharonServerNegotiate {
 		return errors.New("packet has incorrect header")
 	}
 
@@ -95,6 +100,8 @@ func (packet *ServerNegotiate) UnmarshalBinary(data []byte) (err error) {
 	return
 }
 
+// AuthNegotiate is a connection negotiation packet that is sent from the auth
+// server to the game server.
 type AuthNegotiate struct {
 	version       uint8
 	clientSession uint32
@@ -103,10 +110,11 @@ type AuthNegotiate struct {
 	username      string
 }
 
+// MarshalBinary marshalls an AuthNegotiate from binary data.
 func (packet *AuthNegotiate) MarshalBinary() (data []byte, err error) {
 	var buffer bytes.Buffer
 
-	binary.Write(&buffer, binary.LittleEndian, AUTH_NEGOTIATE)
+	binary.Write(&buffer, binary.LittleEndian, CharonAuthNegotiate)
 	binary.Write(&buffer, binary.LittleEndian, packet.version)
 	binary.Write(&buffer, binary.LittleEndian, packet.clientSession)
 	binary.Write(&buffer, binary.LittleEndian, packet.session)
@@ -119,6 +127,7 @@ func (packet *AuthNegotiate) MarshalBinary() (data []byte, err error) {
 	return
 }
 
+// UnmarshalBinary unmarshalls an AuthNegotiate to binary data.
 func (packet *AuthNegotiate) UnmarshalBinary(data []byte) (err error) {
 	buffer := bytes.NewBuffer(data)
 
@@ -127,7 +136,7 @@ func (packet *AuthNegotiate) UnmarshalBinary(data []byte) (err error) {
 	if err != nil {
 		return
 	}
-	if header != AUTH_NEGOTIATE {
+	if header != CharonAuthNegotiate {
 		return errors.New("packet has incorrect header")
 	}
 
@@ -179,15 +188,18 @@ func (packet *AuthNegotiate) UnmarshalBinary(data []byte) (err error) {
 	return
 }
 
+// ServerEphemeral contains an SRP ephemeral value sent from the game server to
+// the auth server.
 type ServerEphemeral struct {
 	session   uint32
 	ephemeral []byte
 }
 
+// MarshalBinary marshalls a ServerEphemeral from binary data.
 func (packet *ServerEphemeral) MarshalBinary() (data []byte, err error) {
 	var buffer bytes.Buffer
 
-	err = binary.Write(&buffer, binary.LittleEndian, SERVER_EPHEMERAL)
+	err = binary.Write(&buffer, binary.LittleEndian, CharonServerEphemeral)
 	if err != nil {
 		return
 	}
@@ -211,6 +223,7 @@ func (packet *ServerEphemeral) MarshalBinary() (data []byte, err error) {
 	return
 }
 
+// UnmarshalBinary unmarshalls a ServerEphemeral to binary data.
 func (packet *ServerEphemeral) UnmarshalBinary(data []byte) (err error) {
 	buffer := bytes.NewBuffer(data)
 
@@ -219,7 +232,7 @@ func (packet *ServerEphemeral) UnmarshalBinary(data []byte) (err error) {
 	if err != nil {
 		return
 	}
-	if header != SERVER_EPHEMERAL {
+	if header != CharonServerEphemeral {
 		return errors.New("packet has incorrect header")
 	}
 
@@ -246,15 +259,18 @@ func (packet *ServerEphemeral) UnmarshalBinary(data []byte) (err error) {
 	return
 }
 
+// AuthEphemeral contains an SRP ephemeral value sent from the auth server to
+// the game server.
 type AuthEphemeral struct {
 	session   uint32
 	ephemeral []byte
 }
 
+// MarshalBinary marshalls an AuthEphemeral from binary data.
 func (packet *AuthEphemeral) MarshalBinary() (data []byte, err error) {
 	var buffer bytes.Buffer
 
-	err = binary.Write(&buffer, binary.LittleEndian, AUTH_EPHEMERAL)
+	err = binary.Write(&buffer, binary.LittleEndian, CharonAuthEphemeral)
 	if err != nil {
 		return
 	}
@@ -278,6 +294,7 @@ func (packet *AuthEphemeral) MarshalBinary() (data []byte, err error) {
 	return
 }
 
+// UnmarshalBinary unmarshalls an AuthEphemeral to binary data.
 func (packet *AuthEphemeral) UnmarshalBinary(data []byte) (err error) {
 	buffer := bytes.NewBuffer(data)
 
@@ -286,7 +303,7 @@ func (packet *AuthEphemeral) UnmarshalBinary(data []byte) (err error) {
 	if err != nil {
 		return
 	}
-	if header != AUTH_EPHEMERAL {
+	if header != CharonAuthEphemeral {
 		return errors.New("packet has incorrect header")
 	}
 
@@ -313,15 +330,18 @@ func (packet *AuthEphemeral) UnmarshalBinary(data []byte) (err error) {
 	return
 }
 
+// ServerProof contains a SRP proof value sent from the game server to
+// the auth server.
 type ServerProof struct {
 	session uint32
 	proof   []byte
 }
 
+// MarshalBinary marshalls a ServerProof from binary data.
 func (packet *ServerProof) MarshalBinary() (data []byte, err error) {
 	var buffer bytes.Buffer
 
-	err = binary.Write(&buffer, binary.LittleEndian, SERVER_PROOF)
+	err = binary.Write(&buffer, binary.LittleEndian, CharonServerProof)
 	if err != nil {
 		return
 	}
@@ -345,6 +365,7 @@ func (packet *ServerProof) MarshalBinary() (data []byte, err error) {
 	return
 }
 
+// UnmarshalBinary unmarshalls a ServerProof to binary data.
 func (packet *ServerProof) UnmarshalBinary(data []byte) (err error) {
 	buffer := bytes.NewBuffer(data)
 
@@ -353,7 +374,7 @@ func (packet *ServerProof) UnmarshalBinary(data []byte) (err error) {
 	if err != nil {
 		return
 	}
-	if header != SERVER_PROOF {
+	if header != CharonServerProof {
 		return errors.New("packet has incorrect header")
 	}
 
@@ -380,15 +401,18 @@ func (packet *ServerProof) UnmarshalBinary(data []byte) (err error) {
 	return
 }
 
+// AuthProof contains a SRP proof value sent from the auth server to
+// the game server.
 type AuthProof struct {
 	session uint32
 	proof   []byte
 }
 
+// MarshalBinary marshalls an AuthProof from binary data.
 func (packet *AuthProof) MarshalBinary() (data []byte, err error) {
 	var buffer bytes.Buffer
 
-	err = binary.Write(&buffer, binary.LittleEndian, AUTH_PROOF)
+	err = binary.Write(&buffer, binary.LittleEndian, CharonAuthProof)
 	if err != nil {
 		return
 	}
@@ -412,6 +436,7 @@ func (packet *AuthProof) MarshalBinary() (data []byte, err error) {
 	return
 }
 
+// UnmarshalBinary unmarshalls an AuthProof to binary data.
 func (packet *AuthProof) UnmarshalBinary(data []byte) (err error) {
 	buffer := bytes.NewBuffer(data)
 
@@ -420,7 +445,7 @@ func (packet *AuthProof) UnmarshalBinary(data []byte) (err error) {
 	if err != nil {
 		return
 	}
-	if header != AUTH_PROOF {
+	if header != CharonAuthProof {
 		return errors.New("packet has incorrect header")
 	}
 
