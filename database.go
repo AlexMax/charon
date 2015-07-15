@@ -19,11 +19,13 @@
 package charon
 
 import (
+	"crypto/sha256"
 	"strings"
 	"sync"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/tadglines/go-pkgs/crypto/srp"
 )
 
 type Database struct {
@@ -35,12 +37,12 @@ type Database struct {
 var schema = `
 CREATE TABLE IF NOT EXISTS users(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	username TEXT,
-	email TEXT,
-	verifier BLOB,
-	salt BLOB,
-	access TEXT,
-	active INTEGER
+	username TEXT UNIQUE NOT NULL,
+	email TEXT NOT NULL,
+	verifier BLOB NOT NULL,
+	salt BLOB NOT NULL,
+	access TEXT NOT NULL,
+	active INTEGER NOT NULL
 );
 CREATE TABLE IF NOT EXISTS profiles(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,13 +96,21 @@ const (
 
 // Add a new user
 func (self *Database) AddUser(username string, email string, password string) (err error) {
+	srp, err := srp.NewSRP("rfc5054.2048", sha256.New, nil)
+	if err != nil {
+		return err
+	}
+
 	user := new(User)
 	user.Username = username
 	user.Email = email
-	user.Verifier = []byte{0x01, 0x23, 0x45, 0x67}
-	user.Salt = []byte{0x01, 0x23, 0x45, 0x67}
 	user.Access = UserAccessUnverified
 	user.Active = false
+
+	user.Salt, user.Verifier, err = srp.ComputeVerifier([]byte(password))
+	if err != nil {
+		return err
+	}
 
 	self.mutex.Lock()
 	_, err = self.db.NamedExec("INSERT INTO users (Username, Email, Verifier, Salt, Access, Active) VALUES (:username, :email, :verifier, :salt, :access, :active)", user)
