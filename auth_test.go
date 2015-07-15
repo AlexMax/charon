@@ -1,6 +1,6 @@
 /*
  *  Charon: A game authentication server
- *  Copyright (C) 2014  Alex Mayfield <alexmax2742@gmail.com>
+ *  Copyright (C) 2014-2015  Alex Mayfield <alexmax2742@gmail.com>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as published by
