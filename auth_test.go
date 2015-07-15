@@ -27,14 +27,16 @@ func TestRouterShortMessage(t *testing.T) {
 	addr, _ := net.ResolveUDPAddr("udp4", "127.0.0.1:16667")
 	req := request{addr, []byte("\x01")}
 
-	_, err := router(&req)
+	app, err := NewAuthApp()
+	_, err = app.router(&req)
 	if err == nil {
 		t.Errorf("%v was incorrectly routed as valid request", req)
 	}
 }
 
 func TestRouterHandleNegotiate(t *testing.T) {
-	addr, _ := net.ResolveUDPAddr("udp4", "127.0.0.1:16667")
+	// UDP sender
+	addr, err := net.ResolveUDPAddr("udp4", "127.0.0.1:16667")
 
 	// Assemble packet
 	var packet ServerNegotiate
@@ -43,18 +45,28 @@ func TestRouterHandleNegotiate(t *testing.T) {
 	packet.clientSession = 4293844428
 	actual, _ := packet.MarshalBinary()
 
+	// Create auth app with fixture
+	app, err := NewAuthApp()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
+
+	err = app.database.AddUser("username", "charontest@mailinator.com", "password")
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
+
 	// Assemble UDP request
 	req := request{addr, actual}
-
-	route, err := router(&req)
+	route, err := app.router(&req)
 	if err != nil {
-		t.Errorf("%v request was incorrectly routed", req)
+		t.Errorf("Request was incorrectly routed (%v)", err)
 	}
 
 	// Route request
 	res, err := route(&req)
 	if err != nil {
-		t.Errorf("%v handler returned an error message", route)
+		t.Errorf("Route returned an error (%v)", err)
 	}
 
 	// Unmarshall response

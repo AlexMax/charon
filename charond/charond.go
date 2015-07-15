@@ -1,7 +1,20 @@
 package main
 
-import "github.com/AlexMax/charon"
+import (
+	"log"
+
+	"github.com/AlexMax/charon"
+)
 
 func main() {
-	charon.New()
+	log.Print("Starting Charon...")
+
+	// Construct application.
+	authApp, err := charon.NewAuthApp()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Start the application server.
+	log.Fatal(authApp.ListenAndServe(":16666"))
 }

@@ -2,19 +2,21 @@ package charon
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type Database struct {
-	db *sqlx.DB
+	db    *sqlx.DB
+	mutex sync.Mutex
 }
 
 // Schema for sqlite3.
 var schema = `
 CREATE TABLE IF NOT EXISTS users(
-	id INT PRIMARY KEY,
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	username TEXT,
 	email TEXT,
 	verifier BLOB,
@@ -23,8 +25,8 @@ CREATE TABLE IF NOT EXISTS users(
 	active INTEGER
 );
 CREATE TABLE IF NOT EXISTS profiles(
-	id INT PRIMARY KEY,
-	user_id INT,
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	user_id INTEGER,
 	clan TEXT,
 	contactinfo TEXT,
 	country TEXT,
@@ -64,10 +66,36 @@ type User struct {
 	Active   bool
 }
 
+const (
+	UserAccessUnverified string = "UNVERIFIED"
+	UserAccessUser       string = "USER"
+	UserAccessOp         string = "OP"
+	UserAccessMaster     string = "MASTER"
+	UserAccessOwner      string = "OWNER"
+)
+
+// Add a new user
+func (self *Database) AddUser(username string, email string, password string) (err error) {
+	user := new(User)
+	user.Username = username
+	user.Email = email
+	user.Verifier = []byte{0x01, 0x23, 0x45, 0x67}
+	user.Salt = []byte{0x01, 0x23, 0x45, 0x67}
+	user.Access = UserAccessUnverified
+	user.Active = false
+
+	self.mutex.Lock()
+	_, err = self.db.NamedExec("INSERT INTO users (Username, Email, Verifier, Salt, Access, Active) VALUES (:username, :email, :verifier, :salt, :access, :active)", user)
+	self.mutex.Unlock()
+	return
+}
+
 // Try to find a specific user by name or email address.
 func (self *Database) FindUser(username string) (user *User, err error) {
 	user = &User{}
+	self.mutex.Lock()
 	err = self.db.Get(user, "SELECT * FROM users WHERE username LIKE $1 OR email LIKE $1", strings.ToLower(username))
+	self.mutex.Unlock()
 	return
 }
 

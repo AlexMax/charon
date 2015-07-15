@@ -27,6 +27,12 @@ import (
 	"net"
 )
 
+// AuthApp contains all state for a single instance of the
+// authentication server.
+type AuthApp struct {
+	database Database
+}
+
 type request struct {
 	address *net.UDPAddr
 	message []byte
@@ -39,9 +45,22 @@ type response struct {
 
 type routeFunc func(*request) (response, error)
 
-// New creates a new instance of the Charon auth server.
-func New() (err error) {
-	listenaddr, err := net.ResolveUDPAddr("udp", ":16666")
+// NewAuthApp creates a new instance of the auth server app.
+func NewAuthApp() (authApp *AuthApp, err error) {
+	authApp = new(AuthApp)
+
+	// Initialize database connection
+	database, err := NewDatabase()
+	if err != nil {
+		return
+	}
+	authApp.database = *database
+	return
+}
+
+// ListenAndServe starts the auth server app.
+func (self *AuthApp) ListenAndServe(addr string) (err error) {
+	listenaddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		return
 	}
@@ -61,13 +80,13 @@ func New() (err error) {
 		}
 
 		req := request{msgaddr, message[:msglen]}
-		go requestHandler(&req)
+		go self.requestHandler(&req)
 	}
 }
 
-func requestHandler(req *request) {
+func (self *AuthApp) requestHandler(req *request) {
 	// Select callback function to route to.
-	route, err := router(req)
+	route, err := self.router(req)
 	if err != nil {
 		log.Printf("[DEBUG] %s", err.Error())
 	}
@@ -86,7 +105,7 @@ func requestHandler(req *request) {
 	conn.WriteToUDP(res.message, res.address)
 }
 
-func router(req *request) (route routeFunc, err error) {
+func (self *AuthApp) router(req *request) (route routeFunc, err error) {
 	if len(req.message) < 4 {
 		err = errors.New("Message is too small")
 		return
@@ -96,11 +115,11 @@ func router(req *request) (route routeFunc, err error) {
 	header := binary.LittleEndian.Uint32(req.message[:4])
 	switch header {
 	case CharonServerNegotiate:
-		route = handleNegotiate
+		route = self.handleNegotiate
 	case CharonServerEphemeral:
-		route = handleEphemeral
+		route = self.handleEphemeral
 	case CharonServerProof:
-		route = handleProof
+		route = self.handleProof
 	default:
 		err = errors.New("Invalid packet type")
 	}
@@ -109,9 +128,15 @@ func router(req *request) (route routeFunc, err error) {
 }
 
 // Handle initial negotiation
-func handleNegotiate(req *request) (res response, err error) {
+func (self *AuthApp) handleNegotiate(req *request) (res response, err error) {
 	var packet ServerNegotiate
 	err = packet.UnmarshalBinary(req.message)
+	if err != nil {
+		return
+	}
+
+	// Ensure that the user exists.
+	user, err := self.database.FindUser(packet.username)
 	if err != nil {
 		return
 	}
@@ -133,7 +158,8 @@ func handleNegotiate(req *request) (res response, err error) {
 	var resPacket AuthNegotiate
 	resPacket.clientSession = packet.clientSession
 	resPacket.session = sessionID
-	resPacket.username = packet.username
+	resPacket.salt = user.Salt
+	resPacket.username = user.Username
 	resPacket.version = 2
 	message, err := resPacket.MarshalBinary()
 	if err != nil {
@@ -147,7 +173,7 @@ func handleNegotiate(req *request) (res response, err error) {
 }
 
 // Handle SRP ephemeral exchange
-func handleEphemeral(req *request) (res response, err error) {
+func (self *AuthApp) handleEphemeral(req *request) (res response, err error) {
 	var packet ServerEphemeral
 	err = packet.UnmarshalBinary(req.message)
 	if err != nil {
@@ -158,7 +184,7 @@ func handleEphemeral(req *request) (res response, err error) {
 }
 
 // Handle SRP proof exchange
-func handleProof(req *request) (res response, err error) {
+func (self *AuthApp) handleProof(req *request) (res response, err error) {
 	var packet ServerProof
 	err = packet.UnmarshalBinary(req.message)
 	if err != nil {

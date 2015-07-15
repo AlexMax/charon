@@ -29,8 +29,25 @@ func TestNewDatabase(t *testing.T) {
 	}
 }
 
+func TestAddUser(t *testing.T) {
+	database, err := NewDatabase()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
+
+	err = database.AddUser("username", "charontest@mailinator.com", "password")
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
+}
+
 func TestFindUser(t *testing.T) {
 	database, err := NewDatabase()
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
+
+	err = database.AddUser("username", "charontest@mailinator.com", "password")
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}
