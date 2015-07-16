@@ -24,17 +24,19 @@ import (
 	"sync"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3" // Database driver
 	"github.com/tadglines/go-pkgs/crypto/srp"
 )
 
+// Database is an instance of our database connection and all necessary state
+// used to manage said instance.
 type Database struct {
 	db    *sqlx.DB
 	mutex sync.Mutex
 }
 
 // Schema for sqlite3.
-var schema = `
+const schema = `
 CREATE TABLE IF NOT EXISTS users(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	username TEXT UNIQUE NOT NULL,
@@ -59,6 +61,7 @@ CREATE TABLE IF NOT EXISTS profiles(
 	FOREIGN KEY(user_id) REFERENCES users(id)
 );`
 
+// NewDatabase creates a new Database instance.
 func NewDatabase() (database *Database, err error) {
 	// Create a database connection.
 	db, err := sqlx.Connect("sqlite3", ":memory:")
@@ -75,9 +78,9 @@ func NewDatabase() (database *Database, err error) {
 	return
 }
 
-// A representation of a user.
+// User is a representation of the `user` table in the database.
 type User struct {
-	Id       uint
+	ID       uint
 	Username string
 	Email    string
 	Verifier []byte
@@ -86,6 +89,7 @@ type User struct {
 	Active   bool
 }
 
+// User access constants.
 const (
 	UserAccessUnverified string = "UNVERIFIED"
 	UserAccessUser       string = "USER"
@@ -94,8 +98,8 @@ const (
 	UserAccessOwner      string = "OWNER"
 )
 
-// Add a new user
-func (self *Database) AddUser(username string, email string, password string) (err error) {
+// AddUser adds a new user.
+func (database *Database) AddUser(username string, email string, password string) (err error) {
 	srp, err := srp.NewSRP("rfc5054.2048", sha256.New, nil)
 	if err != nil {
 		return err
@@ -112,24 +116,24 @@ func (self *Database) AddUser(username string, email string, password string) (e
 		return err
 	}
 
-	self.mutex.Lock()
-	_, err = self.db.NamedExec("INSERT INTO users (Username, Email, Verifier, Salt, Access, Active) VALUES (:username, :email, :verifier, :salt, :access, :active)", user)
-	self.mutex.Unlock()
+	database.mutex.Lock()
+	_, err = database.db.NamedExec("INSERT INTO users (Username, Email, Verifier, Salt, Access, Active) VALUES (:username, :email, :verifier, :salt, :access, :active)", user)
+	database.mutex.Unlock()
 	return
 }
 
-// Try to find a specific user by name or email address.
-func (self *Database) FindUser(username string) (user *User, err error) {
+// FindUser tries to find a specific user by name or email address.
+func (database *Database) FindUser(username string) (user *User, err error) {
 	user = &User{}
-	self.mutex.Lock()
-	err = self.db.Get(user, "SELECT * FROM users WHERE username LIKE $1 OR email LIKE $1", strings.ToLower(username))
-	self.mutex.Unlock()
+	database.mutex.Lock()
+	err = database.db.Get(user, "SELECT * FROM users WHERE username LIKE $1 OR email LIKE $1", strings.ToLower(username))
+	database.mutex.Unlock()
 	return
 }
 
-// A representation of a user's profile.
+// Profile is representation of the `profile` table in the database.
 type Profile struct {
-	Id                 uint
+	ID                 uint
 	User_id            uint
 	Clan               string
 	Contactinfo        string
