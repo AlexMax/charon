@@ -23,9 +23,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/AlexMax/charon/srp"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3" // Database driver
-	"github.com/tadglines/go-pkgs/crypto/srp"
 )
 
 // Database is an instance of our database connection and all necessary state
