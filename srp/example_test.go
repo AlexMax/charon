@@ -23,13 +23,13 @@ func ExampleNewSRP() {
 	username := []byte("example")
 	password := []byte("3x@mp1e")
 
-	srp, err := NewSRP("1024", sha256.New, nil)
+	srp, err := NewSRP("openssl.1024", sha256.New, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	cs := srp.NewClientSession(username, password)
-	salt, v, err := srp.ComputeVerifier(password)
+	salt, v, err := srp.ComputeVerifier(username, password)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,10 +50,10 @@ func ExampleNewSRP() {
 
 	cauth := cs.ComputeAuthenticator()
 	if !ss.VerifyClientAuthenticator(cauth) {
-		log.Fatal("Client Authenticator is not valid")
+		log.Print("Client Authenticator is not valid")
 	}
 	sauth := ss.ComputeAuthenticator(cauth)
-	if !ss.VerifyClientAuthenticator(sauth) {
-		log.Fatal("Server Authenticator is not valid")
+	if !cs.VerifyServerAuthenticator(sauth) {
+		log.Print("Server Authenticator is not valid")
 	}
 }

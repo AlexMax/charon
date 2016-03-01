@@ -62,7 +62,7 @@ func testSRP(t *testing.T, group string, h func() hash.Hash, username, password 
 		t.Fatal(err)
 	}
 	cs := srp.NewClientSession(username, password)
-	salt, v, err := srp.ComputeVerifier(password)
+	salt, v, err := srp.ComputeVerifier(username, password)
 	if err != nil {
 		t.Fatal(err)
 	}

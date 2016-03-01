@@ -30,7 +30,7 @@ const (
 	DefaultABSize     = 256
 )
 
-type KeyDerivationFunc func(salt, password []byte) []byte
+type KeyDerivationFunc func(salt []byte, username []byte, password []byte) []byte
 
 type HashFunc func() hash.Hash
 
@@ -113,10 +113,17 @@ func NewSRP(group string, h HashFunc, kd KeyDerivationFunc) (*SRP, error) {
 	srp.compute_k()
 
 	if kd == nil {
-		kd = func(salt, password []byte) []byte {
+		kd = func(salt []byte, username []byte, password []byte) []byte {
+			// H(s | H (I | ":" | p))
+			// This appears to be the definitive way of creating a verifier - at
+			// least according to RFC-2945 section 3 and RFC-5054 section 2.4.
 			h := srp.HashFunc()
 			h.Write(salt)
-			h.Write(password)
+			icp := srp.HashFunc()
+			icp.Write(username)
+			icp.Write([]byte(":"))
+			icp.Write(password)
+			h.Write(icp.Sum(nil))
 			return h.Sum(nil)
 		}
 	}
@@ -135,7 +142,7 @@ func quickHash(hf HashFunc, data []byte) []byte {
 
 // ComputeVerifier generates a random salt and computes the verifier value that
 // is associated with the user on the server.
-func (s *SRP) ComputeVerifier(password []byte) (salt []byte, verifier []byte, err error) {
+func (s *SRP) ComputeVerifier(username []byte, password []byte) (salt []byte, verifier []byte, err error) {
 	//  x = H(s, p)               (s is chosen randomly)
 	salt = make([]byte, s.SaltLength)
 	n, err := io.ReadFull(rand.Reader, salt)
@@ -147,7 +154,7 @@ func (s *SRP) ComputeVerifier(password []byte) (salt []byte, verifier []byte, er
 	}
 
 	//  v = g^x                   (computes password verifier)
-	x := new(big.Int).SetBytes(s.KeyDerivationFunc(salt, password))
+	x := new(big.Int).SetBytes(s.KeyDerivationFunc(salt, username, password))
 	v := new(big.Int).Exp(s.Group.Generator, x, s.Group.Prime)
 
 	return salt, v.Bytes(), nil
@@ -219,7 +226,7 @@ func (cs *ClientSession) ComputeKey(salt, B []byte) ([]byte, error) {
 	}
 
 	// x = H(s, p)                 (user enters password)
-	x := new(big.Int).SetBytes(cs.SRP.KeyDerivationFunc(cs.salt, cs.password))
+	x := new(big.Int).SetBytes(cs.SRP.KeyDerivationFunc(cs.salt, cs.username, cs.password))
 
 	// S = (B - kg^x) ^ (a + ux)   (computes session key)
 	// t1 = g^x
