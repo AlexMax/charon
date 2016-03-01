@@ -1,6 +1,6 @@
 /*
  *  Charon: A game authentication server
- *  Copyright (C) 2014-2015  Alex Mayfield <alexmax2742@gmail.com>
+ *  Copyright (C) 2014-2016  Alex Mayfield <alexmax2742@gmail.com>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as published by
@@ -111,7 +111,7 @@ func (database *Database) AddUser(username string, email string, password string
 	user.Access = UserAccessUnverified
 	user.Active = false
 
-	user.Salt, user.Verifier, err = srp.ComputeVerifier([]byte(password))
+	user.Salt, user.Verifier, err = srp.ComputeVerifier([]byte(username), []byte(password))
 	if err != nil {
 		return err
 	}
