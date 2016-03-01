@@ -1,4 +1,5 @@
 // Copyright 2013 Tad Glines
+// Copyright 2016 Alex Mayfield <alexmax2742@gmail.com>
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -115,8 +116,8 @@ func NewSRP(group string, h HashFunc, kd KeyDerivationFunc) (*SRP, error) {
 	if kd == nil {
 		kd = func(salt []byte, username []byte, password []byte) []byte {
 			// H(s | H (I | ":" | p))
-			// This appears to be the definitive way of creating a verifier - at
-			// least according to RFC-2945 section 3 and RFC-5054 section 2.4.
+			// he most common means of creating a verifier.
+			// See RFC-2945 section 3 and RFC-5054 section 2.4
 			h := srp.HashFunc()
 			h.Write(salt)
 			icp := srp.HashFunc()

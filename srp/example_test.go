@@ -1,4 +1,5 @@
 // Copyright 2013 Tad Glines
+// Copyright 2016 Alex Mayfield <alexmax2742@gmail.com>
 //
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
