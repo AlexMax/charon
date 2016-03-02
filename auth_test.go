@@ -19,9 +19,10 @@
 package charon
 
 import (
-	"github.com/go-ini/ini"
 	"net"
 	"testing"
+
+	"github.com/go-ini/ini"
 )
 
 func TestRouterShortMessage(t *testing.T) {

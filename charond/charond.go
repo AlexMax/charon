@@ -19,9 +19,10 @@
 package main
 
 import (
+	"log"
+
 	"github.com/AlexMax/charon"
 	"github.com/go-ini/ini"
-	"log"
 )
 
 func main() {

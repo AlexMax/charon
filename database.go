@@ -20,13 +20,14 @@ package charon
 
 import (
 	"crypto/sha256"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/AlexMax/charon/srp"
 	"github.com/go-ini/ini"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3" // Database driver
-	"strings"
-	"sync"
-	"time"
 )
 
 // Database is an instance of our database connection and all necessary state

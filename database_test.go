@@ -19,8 +19,9 @@
 package charon
 
 import (
-	"github.com/go-ini/ini"
 	"testing"
+
+	"github.com/go-ini/ini"
 )
 
 func TestNewDatabase(t *testing.T) {

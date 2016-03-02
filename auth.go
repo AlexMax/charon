@@ -23,9 +23,10 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
-	"github.com/go-ini/ini"
 	"log"
 	"net"
+
+	"github.com/go-ini/ini"
 )
 
 // AuthApp contains all state for a single instance of the
