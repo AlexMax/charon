@@ -26,6 +26,7 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	log.Print("Starting Charon...")
 
 	// Load configuration
