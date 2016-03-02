@@ -1,6 +1,6 @@
 /*
  *  Charon: A game authentication server
- *  Copyright (C) 2014-2015  Alex Mayfield <alexmax2742@gmail.com>
+ *  Copyright (C) 2014-2016  Alex Mayfield <alexmax2742@gmail.com>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as published by
@@ -89,18 +89,21 @@ func (self *AuthApp) requestHandler(req *request) {
 	route, err := self.router(req)
 	if err != nil {
 		log.Printf("[DEBUG] %s", err.Error())
+		return
 	}
 
 	// Route message to callback function.
 	res, err := route(req)
 	if err != nil {
 		log.Printf("[DEBUG] %s", err.Error())
+		return
 	}
 
 	// Respond to sender.
 	conn, err := net.ListenUDP("udp", req.address)
 	if err != nil {
 		log.Printf("[DEBUG] %s", err.Error())
+		return
 	}
 	conn.WriteToUDP(res.message, res.address)
 }
