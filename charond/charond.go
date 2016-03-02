@@ -1,6 +1,6 @@
 /*
  *  Charon: A game authentication server
- *  Copyright (C) 2014-2015  Alex Mayfield <alexmax2742@gmail.com>
+ *  Copyright (C) 2014-2016  Alex Mayfield <alexmax2742@gmail.com>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as published by
@@ -19,16 +19,22 @@
 package main
 
 import (
-	"log"
-
 	"github.com/AlexMax/charon"
+	"github.com/go-ini/ini"
+	"log"
 )
 
 func main() {
 	log.Print("Starting Charon...")
 
+	// Load configuration
+	config, err := ini.Load("charon.ini")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// Construct application.
-	authApp, err := charon.NewAuthApp()
+	authApp, err := charon.NewAuthApp(config)
 	if err != nil {
 		log.Fatal(err)
 	}

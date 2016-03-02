@@ -20,13 +20,13 @@ package charon
 
 import (
 	"crypto/sha256"
+	"github.com/AlexMax/charon/srp"
+	"github.com/go-ini/ini"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/mattn/go-sqlite3" // Database driver
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/AlexMax/charon/srp"
-	"github.com/jmoiron/sqlx"
-	_ "github.com/mattn/go-sqlite3" // Database driver
 )
 
 // Database is an instance of our database connection and all necessary state
@@ -68,9 +68,10 @@ CREATE TABLE IF NOT EXISTS Profiles(
 );`
 
 // NewDatabase creates a new Database instance.
-func NewDatabase() (database *Database, err error) {
+func NewDatabase(config *ini.File) (database *Database, err error) {
 	// Create a database connection.
-	db, err := sqlx.Connect("sqlite3", ":memory:")
+	filename := config.Section("database").Key("filename").MustString(":memory:")
+	db, err := sqlx.Connect("sqlite3", filename)
 	if err != nil {
 		return
 	}

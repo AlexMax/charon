@@ -23,6 +23,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"errors"
+	"github.com/go-ini/ini"
 	"log"
 	"net"
 )
@@ -30,6 +31,7 @@ import (
 // AuthApp contains all state for a single instance of the
 // authentication server.
 type AuthApp struct {
+	config   *ini.File
 	database Database
 }
 
@@ -46,11 +48,14 @@ type response struct {
 type routeFunc func(*request) (response, error)
 
 // NewAuthApp creates a new instance of the auth server app.
-func NewAuthApp() (authApp *AuthApp, err error) {
+func NewAuthApp(config *ini.File) (authApp *AuthApp, err error) {
 	authApp = new(AuthApp)
 
+	// Attach configuration
+	authApp.config = config
+
 	// Initialize database connection
-	database, err := NewDatabase()
+	database, err := NewDatabase(config)
 	if err != nil {
 		return
 	}

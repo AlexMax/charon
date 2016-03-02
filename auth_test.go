@@ -1,6 +1,6 @@
 /*
  *  Charon: A game authentication server
- *  Copyright (C) 2014-2015  Alex Mayfield <alexmax2742@gmail.com>
+ *  Copyright (C) 2014-2016  Alex Mayfield <alexmax2742@gmail.com>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as published by
@@ -19,6 +19,7 @@
 package charon
 
 import (
+	"github.com/go-ini/ini"
 	"net"
 	"testing"
 )
@@ -27,7 +28,7 @@ func TestRouterShortMessage(t *testing.T) {
 	addr, _ := net.ResolveUDPAddr("udp4", "127.0.0.1:16667")
 	req := request{addr, []byte("\x01")}
 
-	app, err := NewAuthApp()
+	app, err := NewAuthApp(ini.Empty())
 	_, err = app.router(&req)
 	if err == nil {
 		t.Errorf("%v was incorrectly routed as valid request", req)
@@ -46,7 +47,7 @@ func TestRouterHandleNegotiate(t *testing.T) {
 	actual, _ := packet.MarshalBinary()
 
 	// Create auth app with fixture
-	app, err := NewAuthApp()
+	app, err := NewAuthApp(ini.Empty())
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}

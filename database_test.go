@@ -1,6 +1,6 @@
 /*
  *  Charon: A game authentication server
- *  Copyright (C) 2014-2015  Alex Mayfield <alexmax2742@gmail.com>
+ *  Copyright (C) 2014-2016  Alex Mayfield <alexmax2742@gmail.com>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as published by
@@ -19,18 +19,19 @@
 package charon
 
 import (
+	"github.com/go-ini/ini"
 	"testing"
 )
 
 func TestNewDatabase(t *testing.T) {
-	_, err := NewDatabase()
+	_, err := NewDatabase(ini.Empty())
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}
 }
 
 func TestAddUser(t *testing.T) {
-	database, err := NewDatabase()
+	database, err := NewDatabase(ini.Empty())
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}
@@ -42,7 +43,7 @@ func TestAddUser(t *testing.T) {
 }
 
 func TestFindUser(t *testing.T) {
-	database, err := NewDatabase()
+	database, err := NewDatabase(ini.Empty())
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}
