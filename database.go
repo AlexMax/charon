@@ -22,6 +22,7 @@ import (
 	"crypto/sha256"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/AlexMax/charon/srp"
 	"github.com/jmoiron/sqlx"
@@ -37,28 +38,33 @@ type Database struct {
 
 // Schema for sqlite3.
 const schema = `
-CREATE TABLE IF NOT EXISTS users(
+CREATE TABLE IF NOT EXISTS Users(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	username TEXT UNIQUE NOT NULL,
-	email TEXT NOT NULL,
-	verifier BLOB NOT NULL,
-	salt BLOB NOT NULL,
-	access TEXT NOT NULL,
-	active INTEGER NOT NULL
+	username VARCHAR(255),
+	email VARCHAR(255),
+	verifier BLOB,
+	salt BLOB,
+	access TEXT,
+	active TINYINT(1),
+	createdAt DATETIME NOT NULL,
+	updatedAt DATETIME NOT NULL
 );
-CREATE TABLE IF NOT EXISTS profiles(
+
+CREATE TABLE IF NOT EXISTS Profiles(
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	user_id INTEGER,
-	clan TEXT,
-	contactinfo TEXT,
-	country TEXT,
+	clan VARCHAR(255),
+	clantag VARCHAR(255),
+	contactinfo VARCHAR(255),
+	country VARCHAR(255),
 	gravatar TEXT,
-	location TEXT,
-	message TEXT,
-	username TEXT,
-	visible INTEGER,
-	visible_lastplayed INTEGER,
-	FOREIGN KEY(user_id) REFERENCES users(id)
+	location VARCHAR(255),
+	message VARCHAR(255),
+	username VARCHAR(255),
+	visible TINYINT(1) DEFAULT 1,
+	visible_lastseen TINYINT(1) DEFAULT 1,
+	createdAt DATETIME NOT NULL,
+	updatedAt DATETIME NOT NULL,
+	UserId INTEGER
 );`
 
 // NewDatabase creates a new Database instance.
@@ -78,15 +84,17 @@ func NewDatabase() (database *Database, err error) {
 	return
 }
 
-// User is a representation of the `user` table in the database.
+// User is a representation of the `User` table in the database.
 type User struct {
-	ID       uint
-	Username string
-	Email    string
-	Verifier []byte
-	Salt     []byte
-	Access   string
-	Active   bool
+	ID        uint
+	Username  string
+	Email     string
+	Verifier  []byte
+	Salt      []byte
+	Access    string
+	Active    bool
+	CreatedAt time.Time `db:"createdAt"`
+	UpdatedAt time.Time `db:"updatedAt"`
 }
 
 // User access constants.
@@ -110,6 +118,8 @@ func (database *Database) AddUser(username string, email string, password string
 	user.Email = email
 	user.Access = UserAccessUnverified
 	user.Active = false
+	user.CreatedAt = time.Now()
+	user.UpdatedAt = time.Now()
 
 	user.Salt, user.Verifier, err = srp.ComputeVerifier([]byte(username), []byte(password))
 	if err != nil {
@@ -117,7 +127,7 @@ func (database *Database) AddUser(username string, email string, password string
 	}
 
 	database.mutex.Lock()
-	_, err = database.db.NamedExec("INSERT INTO users (Username, Email, Verifier, Salt, Access, Active) VALUES (:username, :email, :verifier, :salt, :access, :active)", user)
+	_, err = database.db.NamedExec("INSERT INTO Users (Username, Email, Verifier, Salt, Access, Active, createdAt, updatedAt) VALUES (:username, :email, :verifier, :salt, :access, :active, :createdAt, :updatedAt)", user)
 	database.mutex.Unlock()
 	return
 }
