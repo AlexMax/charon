@@ -85,11 +85,11 @@ func (self *AuthApp) ListenAndServe(addr string) (err error) {
 		}
 
 		req := request{msgaddr, message[:msglen]}
-		go self.requestHandler(&req)
+		go self.requestHandler(conn, &req)
 	}
 }
 
-func (self *AuthApp) requestHandler(req *request) {
+func (self *AuthApp) requestHandler(conn *net.UDPConn, req *request) {
 	// Select callback function to route to.
 	route, err := self.router(req)
 	if err != nil {
@@ -105,12 +105,11 @@ func (self *AuthApp) requestHandler(req *request) {
 	}
 
 	// Respond to sender.
-	conn, err := net.ListenUDP("udp", req.address)
+	_, err = conn.WriteToUDP(res.message, res.address)
 	if err != nil {
 		log.Printf("[DEBUG] %s", err.Error())
 		return
 	}
-	conn.WriteToUDP(res.message, res.address)
 }
 
 func (self *AuthApp) router(req *request) (route routeFunc, err error) {
