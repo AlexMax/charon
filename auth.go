@@ -267,12 +267,38 @@ func (self *AuthApp) handleProof(req *request) (res response, err error) {
 		return
 	}
 
+	// Verify the client's M1 and generate M2
 	if session.VerifyClientAuthenticator(packet.proof) == false {
 		self.sessionsMutex.Unlock()
-		err = errors.New("client authenticator is not valid")
+
+		// Authentication failed
+		var resPacket SessionError
+		resPacket.session = packet.session
+		resPacket.errType = SessionErrorAuthFailed
+		message, err := resPacket.MarshalBinary()
+		if err != nil {
+			return res, err
+		}
+
+		res.address = req.address
+		res.message = message
+
+		return res, err
+	}
+	serverProof := session.ComputeAuthenticator(packet.proof)
+	self.sessionsMutex.Unlock()
+
+	// Assemble response
+	var resPacket AuthProof
+	resPacket.session = packet.session
+	resPacket.proof = serverProof
+	message, err := resPacket.MarshalBinary()
+	if err != nil {
 		return
 	}
 
-	self.sessionsMutex.Unlock()
+	res.address = req.address
+	res.message = message
+
 	return
 }

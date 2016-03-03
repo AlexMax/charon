@@ -1,6 +1,6 @@
 /*
  *  Charon: A game authentication server
- *  Copyright (C) 2014-2015  Alex Mayfield <alexmax2742@gmail.com>
+ *  Copyright (C) 2014-2016  Alex Mayfield <alexmax2742@gmail.com>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as published by
@@ -33,8 +33,8 @@ const (
 	CharonAuthEphemeral   uint32 = 0xD003CA20
 	CharonServerProof     uint32 = 0xD003CA03
 	CharonAuthProof       uint32 = 0xD003CA30
-	CharonErrorUser       uint32 = 0xD003CAFF
-	CharonErrorSession    uint32 = 0xD003CAEE
+	CharonUserError       uint32 = 0xD003CAFF
+	CharonSessionError    uint32 = 0xD003CAEE
 )
 
 // ServerNegotiate is a connection negotiation packet that is sent from the game
@@ -469,5 +469,45 @@ func (packet *AuthProof) UnmarshalBinary(data []byte) (err error) {
 
 	packet.session = session
 	packet.proof = proof
+	return
+}
+
+type SessionErrorType uint8
+
+const (
+	SessionErrorTryLater SessionErrorType = iota
+	SessionErrorNoExist
+	SessionErrorVerifierUnsafe
+	SessionErrorAuthFailed
+)
+
+type SessionError struct {
+	errType SessionErrorType
+	session uint32
+}
+
+func (packet *SessionError) MarshalBinary() (data []byte, err error) {
+	var buffer bytes.Buffer
+
+	err = binary.Write(&buffer, binary.LittleEndian, CharonSessionError)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.errType)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.session)
+	if err != nil {
+		return
+	}
+
+	data = buffer.Bytes()
+	return
+}
+
+func (packet *SessionError) UnmarshalBinary(data []byte) (err error) {
 	return
 }
