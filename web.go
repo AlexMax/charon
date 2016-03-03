@@ -1,6 +1,6 @@
 /*
  *  Charon: A game authentication server
- *  Copyright (C) 2014-2016  Alex Mayfield <alexmax2742@gmail.com>
+ *  Copyright (C) 2016  Alex Mayfield <alexmax2742@gmail.com>
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as published by
@@ -16,48 +16,32 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package main
+package charon
 
 import (
-	"log"
+	"net/http"
 
-	"github.com/AlexMax/charon"
 	"github.com/go-ini/ini"
 )
 
-func main() {
-	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Print("Starting Charon...")
+// WebApp contains all state for a single instance of the webserver.
+// authentication server.
+type WebApp struct {
+	config *ini.File
+	mux    *http.ServeMux
+}
 
-	// Load configuration
-	config, err := ini.Load("charon.ini")
-	if err != nil {
-		log.Fatal(err)
-	}
+func NewWebApp(config *ini.File) (webApp *WebApp, err error) {
+	webApp = new(WebApp)
 
-	// Start Authenticator
-	go func() {
-		// Construct application.
-		authApp, err := charon.NewAuthApp(config)
-		if err != nil {
-			log.Fatal(err)
-		}
+	// Attach configuration
+	webApp.config = config
 
-		// Start the auth server.
-		log.Fatal(authApp.ListenAndServe(":16666"))
-	}()
+	// Initialize mux
+	webApp.mux = http.NewServeMux()
+	return
+}
 
-	// Start Website
-	go func() {
-		webApp, err := charon.NewWebApp(config)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		// Start the web server.
-		log.Fatal(webApp.ListenAndServe(":8080"))
-	}()
-
-	// Sleep forever
-	select {}
+func (self *WebApp) ListenAndServe(addr string) (err error) {
+	return http.ListenAndServe(addr, self.mux)
 }
