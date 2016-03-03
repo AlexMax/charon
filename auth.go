@@ -21,20 +21,28 @@ package charon
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/binary"
 	"errors"
 	"log"
 	"net"
+	"sync"
+	"time"
 
+	"github.com/AlexMax/charon/srp"
 	"github.com/go-ini/ini"
 )
 
 // AuthApp contains all state for a single instance of the
 // authentication server.
 type AuthApp struct {
-	config   *ini.File
-	database Database
+	config        *ini.File
+	database      Database
+	sessions      sessions
+	sessionsMutex sync.Mutex
 }
+
+type sessions map[uint32]*srp.ServerSession
 
 type request struct {
 	address *net.UDPAddr
@@ -61,6 +69,10 @@ func NewAuthApp(config *ini.File) (authApp *AuthApp, err error) {
 		return
 	}
 	authApp.database = *database
+
+	// Initialize session store
+	authApp.sessions = make(sessions)
+
 	return
 }
 
@@ -149,7 +161,7 @@ func (self *AuthApp) handleNegotiate(req *request) (res response, err error) {
 		return
 	}
 
-	// Create new session
+	// Create a new random session ID
 	sessionBytes := make([]byte, 4)
 	_, err = rand.Read(sessionBytes)
 	if err != nil {
@@ -161,6 +173,23 @@ func (self *AuthApp) handleNegotiate(req *request) (res response, err error) {
 	if err != nil {
 		return
 	}
+
+	// Create new SRP session
+	srpo, err := srp.NewSRP("rfc5054.2048", sha256.New, nil)
+	if err != nil {
+		return
+	}
+	self.sessionsMutex.Lock()
+	self.sessions[sessionID] = srpo.NewServerSession(
+		[]byte(user.Username), user.Salt, user.Verifier)
+	self.sessionsMutex.Unlock()
+	go func() {
+		// Time out session after a few seconds
+		time.Sleep(time.Second * 5)
+		self.sessionsMutex.Lock()
+		delete(self.sessions, sessionID)
+		self.sessionsMutex.Unlock()
+	}()
 
 	// Assemble response
 	var resPacket AuthNegotiate
@@ -188,6 +217,36 @@ func (self *AuthApp) handleEphemeral(req *request) (res response, err error) {
 		return
 	}
 
+	// Get session if it exists
+	self.sessionsMutex.Lock()
+	session, exists := self.sessions[packet.session]
+	if exists == false {
+		self.sessionsMutex.Unlock()
+		err = errors.New("session does not exist")
+		return
+	}
+
+	// Save client A and generate B
+	_, err = session.ComputeKey(packet.ephemeral)
+	if err != nil {
+		self.sessionsMutex.Unlock()
+		return
+	}
+	serverEphemeral := session.GetB()
+	self.sessionsMutex.Unlock()
+
+	// Assemble response
+	var resPacket AuthEphemeral
+	resPacket.session = packet.session
+	resPacket.ephemeral = serverEphemeral
+	message, err := resPacket.MarshalBinary()
+	if err != nil {
+		return
+	}
+
+	res.address = req.address
+	res.message = message
+
 	return
 }
 
@@ -199,5 +258,21 @@ func (self *AuthApp) handleProof(req *request) (res response, err error) {
 		return
 	}
 
+	// Get session if it exists
+	self.sessionsMutex.Lock()
+	session, exists := self.sessions[packet.session]
+	if exists == false {
+		self.sessionsMutex.Unlock()
+		err = errors.New("session does not exist")
+		return
+	}
+
+	if session.VerifyClientAuthenticator(packet.proof) == false {
+		self.sessionsMutex.Unlock()
+		err = errors.New("client authenticator is not valid")
+		return
+	}
+
+	self.sessionsMutex.Unlock()
 	return
 }
