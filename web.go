@@ -19,16 +19,29 @@
 package charon
 
 import (
+	"fmt"
+	"html/template"
 	"net/http"
 
 	"github.com/go-ini/ini"
+	"goji.io"
+	"goji.io/pat"
 )
+
+type TemplateDefs map[string]TemplateNames
+type TemplateNames []string
+type templateStore map[string]*template.Template
+
+var baseTemplates = TemplateDefs{
+	"home": TemplateNames{"layout", "header", "home"},
+}
 
 // WebApp contains all state for a single instance of the webserver.
 // authentication server.
 type WebApp struct {
-	config *ini.File
-	mux    *http.ServeMux
+	config    *ini.File
+	mux       *goji.Mux
+	templates templateStore
 }
 
 func NewWebApp(config *ini.File) (webApp *WebApp, err error) {
@@ -37,11 +50,43 @@ func NewWebApp(config *ini.File) (webApp *WebApp, err error) {
 	// Attach configuration
 	webApp.config = config
 
+	// Compile templates
+	webApp.templates = make(templateStore)
+	err = webApp.AddTemplateDefs(&baseTemplates)
+	if err != nil {
+		return
+	}
+
 	// Initialize mux
-	webApp.mux = http.NewServeMux()
+	webApp.mux = goji.NewMux()
+
+	// Base routes
+	webApp.mux.HandleFunc(pat.New("/"), webApp.home)
+
 	return
 }
 
 func (self *WebApp) ListenAndServe(addr string) (err error) {
 	return http.ListenAndServe(addr, self.mux)
+}
+
+func (self *WebApp) AddTemplateDefs(tmpls *TemplateDefs) (err error) {
+	for key, value := range *tmpls {
+		fqnames := []string{}
+		for _, name := range value {
+			fqnames = append(fqnames, fmt.Sprintf("templates/html/%s.tmpl", name))
+		}
+		self.templates[key], err = template.ParseFiles(fqnames...)
+		if err != nil {
+			return
+		}
+	}
+	return
+}
+
+func (self *WebApp) home(res http.ResponseWriter, req *http.Request) {
+	err := self.templates["home"].Execute(res, nil)
+	if err != nil {
+		http.Error(res, err.Error(), 500)
+	}
 }
