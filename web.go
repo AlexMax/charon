@@ -37,7 +37,6 @@ var baseTemplates = TemplateDefs{
 }
 
 // WebApp contains all state for a single instance of the webserver.
-// authentication server.
 type WebApp struct {
 	config    *ini.File
 	mux       *goji.Mux
