@@ -35,6 +35,7 @@ type TemplateDefs map[string]TemplateNames
 // TemplateNames defines a list of templates that exist in the "templates/html"
 // directory, and end with a ".tmpl" extension.
 type TemplateNames []string
+
 type templateStore map[string]*template.Template
 
 var baseTemplates = TemplateDefs{
@@ -77,8 +78,9 @@ func (webApp *WebApp) ListenAndServe(addr string) (err error) {
 	return http.ListenAndServe(addr, webApp.mux)
 }
 
-// AddTemplateDefs adds the passed template definitions to the webApp, that can
-// therafter be rendered by name by RenderTemplate.
+// AddTemplateDefs takes the passed template definitions, figures out where they
+// exist on the filesystem, parses them, and puts them in the template store
+// for later execution.
 func (webApp *WebApp) AddTemplateDefs(tmpls *TemplateDefs) (err error) {
 	for key, value := range *tmpls {
 		fqnames := []string{}
@@ -93,8 +95,8 @@ func (webApp *WebApp) AddTemplateDefs(tmpls *TemplateDefs) (err error) {
 	return
 }
 
-// RenderTemplate renders a named template that was previously added by
-// AddTemplateDefs.
+// RenderTemplate renders a named template from the template store that was
+// previously added by AddTemplateDefs.
 func (webApp *WebApp) RenderTemplate(res *http.ResponseWriter, name string, data interface{}) {
 	tmpl, exists := webApp.templates[name]
 	if exists == false {
