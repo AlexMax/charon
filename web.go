@@ -28,7 +28,12 @@ import (
 	"goji.io/pat"
 )
 
+// TemplateDefs defines a map of template names for keys and TemplateNames for
+// values
 type TemplateDefs map[string]TemplateNames
+
+// TemplateNames defines a list of templates that exist in the "templates/html"
+// directory, and end with a ".tmpl" extension.
 type TemplateNames []string
 type templateStore map[string]*template.Template
 
@@ -43,6 +48,7 @@ type WebApp struct {
 	templates templateStore
 }
 
+// NewWebApp creates a new instance of the web server app.
 func NewWebApp(config *ini.File) (webApp *WebApp, err error) {
 	webApp = new(WebApp)
 
@@ -65,17 +71,21 @@ func NewWebApp(config *ini.File) (webApp *WebApp, err error) {
 	return
 }
 
-func (self *WebApp) ListenAndServe(addr string) (err error) {
-	return http.ListenAndServe(addr, self.mux)
+// ListenAndServe has the web server listen on a specific address and port,
+// essentially passing straight through to the http method of the same name.
+func (webApp *WebApp) ListenAndServe(addr string) (err error) {
+	return http.ListenAndServe(addr, webApp.mux)
 }
 
-func (self *WebApp) AddTemplateDefs(tmpls *TemplateDefs) (err error) {
+// AddTemplateDefs adds the passed template definitions to the webApp, that can
+// therafter be rendered by name by RenderTemplate.
+func (webApp *WebApp) AddTemplateDefs(tmpls *TemplateDefs) (err error) {
 	for key, value := range *tmpls {
 		fqnames := []string{}
 		for _, name := range value {
 			fqnames = append(fqnames, fmt.Sprintf("templates/html/%s.tmpl", name))
 		}
-		self.templates[key], err = template.ParseFiles(fqnames...)
+		webApp.templates[key], err = template.ParseFiles(fqnames...)
 		if err != nil {
 			return
 		}
@@ -83,9 +93,23 @@ func (self *WebApp) AddTemplateDefs(tmpls *TemplateDefs) (err error) {
 	return
 }
 
-func (self *WebApp) home(res http.ResponseWriter, req *http.Request) {
-	err := self.templates["home"].Execute(res, nil)
-	if err != nil {
-		http.Error(res, err.Error(), 500)
+// RenderTemplate renders a named template that was previously added by
+// AddTemplateDefs.
+func (webApp *WebApp) RenderTemplate(res *http.ResponseWriter, name string, data interface{}) {
+	tmpl, exists := webApp.templates[name]
+	if exists == false {
+		http.Error(*res, fmt.Sprintf("template %s does not exist", name), 500)
+		return
 	}
+
+	err := tmpl.Execute(*res, data)
+	if err != nil {
+		http.Error(*res, err.Error(), 500)
+		return
+	}
+}
+
+// Renders the homepage.
+func (webApp *WebApp) home(res http.ResponseWriter, req *http.Request) {
+	webApp.RenderTemplate(&res, "noexist", nil)
 }
