@@ -26,7 +26,8 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/go-ini/ini"
-	sess "github.com/gorilla/sessions"
+	gcontext "github.com/gorilla/context"
+	gsessions "github.com/gorilla/sessions"
 	"goji.io"
 	"goji.io/pat"
 )
@@ -50,7 +51,7 @@ var baseTemplates = TemplateDefs{
 type WebApp struct {
 	config    *ini.File
 	mux       *goji.Mux
-	sessions  *sess.CookieStore
+	sessions  *gsessions.CookieStore
 	templates templateStore
 }
 
@@ -69,10 +70,13 @@ func NewWebApp(config *ini.File) (webApp *WebApp, err error) {
 	}
 
 	// Initialize session store
-	webApp.sessions = sess.NewCookieStore([]byte("secret-changeme"))
+	webApp.sessions = gsessions.NewCookieStore([]byte("secret-changeme"))
 
 	// Initialize mux
 	webApp.mux = goji.NewMux()
+
+	// Clear Context Middleware (needed for sessions)
+	webApp.mux.Use(gcontext.ClearHandler)
 
 	// Session Middleware
 	webApp.mux.UseC(func(inner goji.Handler) goji.Handler {
