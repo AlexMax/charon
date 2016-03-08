@@ -136,7 +136,7 @@ func (webApp *WebApp) home(res http.ResponseWriter, req *http.Request) {
 func (webApp *WebApp) login(ctx context.Context, res http.ResponseWriter, req *http.Request) {
 	fmt.Printf("%+v", ctx.Value("session"))
 	if req.Method != "GET" {
-		form := &LoginForm{
+		_ = &LoginForm{
 			login:    req.PostFormValue("login"),
 			password: req.PostFormValue("password"),
 		}
