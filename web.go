@@ -23,7 +23,10 @@ import (
 	"html/template"
 	"net/http"
 
+	"golang.org/x/net/context"
+
 	"github.com/go-ini/ini"
+	sess "github.com/gorilla/sessions"
 	"goji.io"
 	"goji.io/pat"
 )
@@ -39,13 +42,15 @@ type TemplateNames []string
 type templateStore map[string]*template.Template
 
 var baseTemplates = TemplateDefs{
-	"home": TemplateNames{"layout", "header", "home"},
+	"home":  TemplateNames{"layout", "header", "home"},
+	"login": TemplateNames{"layout", "header", "login"},
 }
 
 // WebApp contains all state for a single instance of the webserver.
 type WebApp struct {
 	config    *ini.File
 	mux       *goji.Mux
+	sessions  *sess.CookieStore
 	templates templateStore
 }
 
@@ -63,11 +68,23 @@ func NewWebApp(config *ini.File) (webApp *WebApp, err error) {
 		return
 	}
 
+	// Initialize session store
+	webApp.sessions = sess.NewCookieStore([]byte("secret-changeme"))
+
 	// Initialize mux
 	webApp.mux = goji.NewMux()
 
+	// Session Middleware
+	webApp.mux.UseC(func(inner goji.Handler) goji.Handler {
+		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+			ctx = context.WithValue(ctx, "session", webApp.sessions)
+			inner.ServeHTTPC(ctx, res, req)
+		})
+	})
+
 	// Base routes
 	webApp.mux.HandleFunc(pat.New("/"), webApp.home)
+	webApp.mux.HandleFuncC(pat.New("/login"), webApp.login)
 
 	return
 }
@@ -113,5 +130,19 @@ func (webApp *WebApp) RenderTemplate(res *http.ResponseWriter, name string, data
 
 // Renders the homepage.
 func (webApp *WebApp) home(res http.ResponseWriter, req *http.Request) {
-	webApp.RenderTemplate(&res, "noexist", nil)
+	webApp.RenderTemplate(&res, "home", nil)
+}
+
+func (webApp *WebApp) login(ctx context.Context, res http.ResponseWriter, req *http.Request) {
+	fmt.Printf("%+v", ctx.Value("session"))
+	if req.Method != "GET" {
+		form := &LoginForm{
+			login:    req.PostFormValue("login"),
+			password: req.PostFormValue("password"),
+		}
+
+		webApp.RenderTemplate(&res, "login", nil)
+	} else {
+		webApp.RenderTemplate(&res, "login", nil)
+	}
 }
