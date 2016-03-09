@@ -89,6 +89,7 @@ func NewWebApp(config *ini.File) (webApp *WebApp, err error) {
 	// Base routes
 	webApp.mux.HandleFunc(pat.New("/"), webApp.home)
 	webApp.mux.HandleFuncC(pat.New("/login"), webApp.login)
+	webApp.mux.Handle(pat.New("/assets/*"), http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 
 	return
 }
