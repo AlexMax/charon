@@ -20,6 +20,7 @@ package charon
 
 import (
 	"crypto/sha256"
+	"errors"
 	"strings"
 	"sync"
 	"time"
@@ -140,6 +141,40 @@ func (database *Database) FindUser(username string) (user *User, err error) {
 	database.mutex.Lock()
 	err = database.db.Get(user, "SELECT * FROM users WHERE username LIKE $1 OR email LIKE $1", strings.ToLower(username))
 	database.mutex.Unlock()
+	return
+}
+
+// LoginUser tries to log a user in with the passed username and password.
+func (database *Database) LoginUser(username string, password string) (user *User, err error) {
+	user, err = database.FindUser(username)
+	if err != nil {
+		return
+	}
+
+	srpo, err := srp.NewSRP("rfc5054.2048", sha256.New, nil)
+	if err != nil {
+		return
+	}
+
+	cs := srpo.NewClientSession([]byte(user.Username), []byte(password))
+	ss := srpo.NewServerSession([]byte(user.Username), user.Salt, user.Verifier)
+
+	_, err = cs.ComputeKey(user.Salt, ss.GetB())
+	if err != nil {
+		return
+	}
+
+	_, err = ss.ComputeKey(cs.GetA())
+	if err != nil {
+		return
+	}
+
+	cauth := cs.ComputeAuthenticator()
+	if !ss.VerifyClientAuthenticator(cauth) {
+		err = errors.New("Client Authenticator is not valid")
+		return
+	}
+
 	return
 }
 

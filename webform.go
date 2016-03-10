@@ -19,6 +19,32 @@
 package charon
 
 type LoginForm struct {
-	login    string
-	password string
+	Login    string
+	Password string
+}
+
+type FormErrors map[string]string
+
+// Validate validates the given login form.
+func (form *LoginForm) Validate(db *Database) (user *User, formErrors FormErrors) {
+	formErrors = make(FormErrors)
+	if len(form.Login) == 0 {
+		formErrors["Login"] = "A username or e-mail address is required."
+	}
+	if len(form.Password) == 0 {
+		formErrors["Password"] = "A password is required."
+	}
+
+	// Return early if our username or password doesn't validate.
+	if len(formErrors) > 0 {
+		return
+	}
+
+	// Try and log the user in.
+	user, err := db.LoginUser(form.Login, form.Password)
+	if err != nil {
+		formErrors["Flash"] = "Invalid username or password"
+	}
+
+	return
 }

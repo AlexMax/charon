@@ -19,6 +19,7 @@
 package charon
 
 import (
+	"encoding/gob"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -47,12 +48,15 @@ var baseTemplates = TemplateDefs{
 	"login": TemplateNames{"layout", "header", "login"},
 }
 
+const sessionName = "session"
+
 // WebApp contains all state for a single instance of the webserver.
 type WebApp struct {
-	config    *ini.File
-	mux       *goji.Mux
-	sessions  *gsessions.CookieStore
-	templates templateStore
+	config       *ini.File
+	database     Database
+	mux          *goji.Mux
+	sessionStore gsessions.Store
+	templates    templateStore
 }
 
 // NewWebApp creates a new instance of the web server app.
@@ -62,6 +66,19 @@ func NewWebApp(config *ini.File) (webApp *WebApp, err error) {
 	// Attach configuration
 	webApp.config = config
 
+	// Initialize database connection
+	database, err := NewDatabase(config)
+	if err != nil {
+		return
+	}
+	webApp.database = *database
+
+	// Initialize mux
+	webApp.mux = goji.NewMux()
+
+	// Initialize session store
+	webApp.sessionStore = gsessions.NewCookieStore([]byte("secret"))
+
 	// Compile templates
 	webApp.templates = make(templateStore)
 	err = webApp.AddTemplateDefs(&baseTemplates)
@@ -69,22 +86,8 @@ func NewWebApp(config *ini.File) (webApp *WebApp, err error) {
 		return
 	}
 
-	// Initialize session store
-	webApp.sessions = gsessions.NewCookieStore([]byte("secret-changeme"))
-
-	// Initialize mux
-	webApp.mux = goji.NewMux()
-
 	// Clear Context Middleware (needed for sessions)
 	webApp.mux.Use(gcontext.ClearHandler)
-
-	// Session Middleware
-	webApp.mux.UseC(func(inner goji.Handler) goji.Handler {
-		return goji.HandlerFunc(func(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-			ctx = context.WithValue(ctx, "session", webApp.sessions)
-			inner.ServeHTTPC(ctx, res, req)
-		})
-	})
 
 	// Base routes
 	webApp.mux.HandleFunc(pat.New("/"), webApp.home)
@@ -139,14 +142,46 @@ func (webApp *WebApp) home(res http.ResponseWriter, req *http.Request) {
 }
 
 func (webApp *WebApp) login(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-	fmt.Printf("%+v", ctx.Value("session"))
+	type page struct {
+		Form   *LoginForm
+		Errors FormErrors
+	}
+	var data page
+
 	if req.Method != "GET" {
-		_ = &LoginForm{
-			login:    req.PostFormValue("login"),
-			password: req.PostFormValue("password"),
+		// Validate the form
+		data.Form = &LoginForm{
+			Login:    req.PostFormValue("login"),
+			Password: req.PostFormValue("password"),
+		}
+		var user *User
+		user, data.Errors = data.Form.Validate(&webApp.database)
+		if len(data.Errors) > 0 {
+			webApp.RenderTemplate(&res, "login", data)
+			return
 		}
 
-		webApp.RenderTemplate(&res, "login", nil)
+		// We have a user, but we don't actually want to store the salt or
+		// verifier in the session, so blank them out.
+		user.Salt = []byte("")
+		user.Verifier = []byte("")
+
+		// Store user in the session.
+		session, err := webApp.sessionStore.Get(req, sessionName)
+		if err != nil {
+			http.Error(res, err.Error(), 500)
+			return
+		}
+		gob.Register(User{})
+		session.Values["User"] = *user
+		err = session.Save(req, res)
+		if err != nil {
+			http.Error(res, err.Error(), 500)
+			return
+		}
+
+		// Redirect to the front page.
+		http.Redirect(res, req, "/", 302)
 	} else {
 		webApp.RenderTemplate(&res, "login", nil)
 	}
