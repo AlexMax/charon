@@ -122,14 +122,29 @@ func (webApp *WebApp) AddTemplateDefs(tmpls *TemplateDefs) (err error) {
 
 // RenderTemplate renders a named template from the template store that was
 // previously added by AddTemplateDefs.
-func (webApp *WebApp) RenderTemplate(res *http.ResponseWriter, name string, data interface{}) {
+func (webApp *WebApp) RenderTemplate(res *http.ResponseWriter, req *http.Request, name string, data interface{}) {
 	tmpl, exists := webApp.templates[name]
 	if exists == false {
 		http.Error(*res, fmt.Sprintf("template %s does not exist", name), 500)
 		return
 	}
 
-	err := tmpl.Execute(*res, data)
+	// Populate template context with session data
+	session, err := webApp.sessionStore.Get(req, sessionName)
+	if err != nil {
+		http.Error(*res, err.Error(), 500)
+		return
+	}
+
+	allData := struct {
+		Session map[interface{}]interface{}
+		Data    interface{}
+	}{
+		session.Values,
+		data,
+	}
+
+	err = tmpl.Execute(*res, allData)
 	if err != nil {
 		http.Error(*res, err.Error(), 500)
 		return
@@ -138,15 +153,31 @@ func (webApp *WebApp) RenderTemplate(res *http.ResponseWriter, name string, data
 
 // Renders the homepage.
 func (webApp *WebApp) home(res http.ResponseWriter, req *http.Request) {
-	webApp.RenderTemplate(&res, "home", nil)
+	webApp.RenderTemplate(&res, req, "home", nil)
+}
+
+type LoginData struct {
+	Form   *LoginForm
+	Errors FormErrors
+}
+
+func NewLoginData(req *http.Request) (data *LoginData) {
+	data = &LoginData{}
+
+	if req != nil {
+		data.Form = &LoginForm{
+			Login:    req.PostFormValue("login"),
+			Password: req.PostFormValue("password"),
+		}
+	} else {
+		data.Form = &LoginForm{}
+	}
+
+	return
 }
 
 func (webApp *WebApp) login(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-	type page struct {
-		Form   *LoginForm
-		Errors FormErrors
-	}
-	var data page
+	data := NewLoginData(req)
 
 	if req.Method != "GET" {
 		// Validate the form
@@ -157,7 +188,7 @@ func (webApp *WebApp) login(ctx context.Context, res http.ResponseWriter, req *h
 		var user *User
 		user, data.Errors = data.Form.Validate(&webApp.database)
 		if len(data.Errors) > 0 {
-			webApp.RenderTemplate(&res, "login", data)
+			webApp.RenderTemplate(&res, req, "login", data)
 			return
 		}
 
@@ -183,6 +214,6 @@ func (webApp *WebApp) login(ctx context.Context, res http.ResponseWriter, req *h
 		// Redirect to the front page.
 		http.Redirect(res, req, "/", 302)
 	} else {
-		webApp.RenderTemplate(&res, "login", nil)
+		webApp.RenderTemplate(&res, req, "login", data)
 	}
 }

@@ -4,14 +4,17 @@
 			<li><a href="/">Home</a></li>
 			<li><a href="/users">Users</a></li>
 		</ul>
+		{{if .Session.User}}
 		<ul class="nav navbar-nav navbar-right">
 			<li><a href="/logout">Logout</a></li>
 		</ul>
-		<p class="navbar-text navbar-right">Welcome back, <a href="/users/alexmax">AlexMax</a></p>
+		<p class="navbar-text navbar-right">Welcome back, <a href="/users/alexmax">{{.Session.User.Username}}</a></p>
+		{{else}}
 		<ul class="nav navbar-nav navbar-right">
 			<li><a href="/register">Register</a></li>
 			<li><a href="/login">Login</a></li>
 		</ul>
 		<p class="navbar-text navbar-right">Welcome, guest</p>
+		{{end}}
 	</div>
 </nav>
