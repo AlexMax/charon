@@ -119,17 +119,17 @@ func (webApp *WebApp) AddTemplateDefs(tmpls *TemplateDefs) (err error) {
 
 // RenderTemplate renders a named template from the template store that was
 // previously added by AddTemplateDefs.
-func (webApp *WebApp) RenderTemplate(res *http.ResponseWriter, req *http.Request, name string, data interface{}) {
+func (webApp *WebApp) RenderTemplate(res http.ResponseWriter, req *http.Request, name string, data interface{}) {
 	tmpl, exists := webApp.templates[name]
 	if exists == false {
-		http.Error(*res, fmt.Sprintf("template %s does not exist", name), 500)
+		http.Error(res, fmt.Sprintf("template %s does not exist", name), 500)
 		return
 	}
 
 	// Populate template context with session data
 	session, err := webApp.sessionStore.Get(req, sessionName)
 	if err != nil {
-		http.Error(*res, err.Error(), 500)
+		http.Error(res, err.Error(), 500)
 		return
 	}
 
@@ -141,9 +141,9 @@ func (webApp *WebApp) RenderTemplate(res *http.ResponseWriter, req *http.Request
 		data,
 	}
 
-	err = tmpl.Execute(*res, allData)
+	err = tmpl.Execute(res, allData)
 	if err != nil {
-		http.Error(*res, err.Error(), 500)
+		http.Error(res, err.Error(), 500)
 		return
 	}
 }

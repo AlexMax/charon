@@ -32,7 +32,7 @@ var BaseTemplates = TemplateDefs{
 
 // Home renders the homepage.
 func (webApp *WebApp) Home(res http.ResponseWriter, req *http.Request) {
-	webApp.RenderTemplate(&res, req, "home", nil)
+	webApp.RenderTemplate(res, req, "home", nil)
 }
 
 // LoginData contains the context for the Login page.
@@ -60,7 +60,7 @@ func (webApp *WebApp) Login(ctx context.Context, res http.ResponseWriter, req *h
 		var user *User
 		user, data.Errors = data.Form.Validate(&webApp.database)
 		if len(data.Errors) > 0 {
-			webApp.RenderTemplate(&res, req, "login", data)
+			webApp.RenderTemplate(res, req, "login", data)
 			return
 		}
 
@@ -85,7 +85,7 @@ func (webApp *WebApp) Login(ctx context.Context, res http.ResponseWriter, req *h
 		// Redirect to the front page.
 		http.Redirect(res, req, "/", 302)
 	} else {
-		webApp.RenderTemplate(&res, req, "login", data)
+		webApp.RenderTemplate(res, req, "login", data)
 	}
 }
 
