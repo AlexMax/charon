@@ -58,7 +58,7 @@ func (webApp *WebApp) Login(ctx context.Context, res http.ResponseWriter, req *h
 			Password: req.PostFormValue("password"),
 		}
 		var user *User
-		user, data.Errors = data.Form.Validate(&webApp.database)
+		user, data.Errors = data.Form.Validate(webApp.database)
 		if len(data.Errors) > 0 {
 			webApp.RenderTemplate(res, req, "login", data)
 			return

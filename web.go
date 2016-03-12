@@ -49,7 +49,7 @@ const sessionName = "session"
 // WebApp contains all state for a single instance of the webserver.
 type WebApp struct {
 	config       *ini.File
-	database     Database
+	database     *Database
 	mux          *goji.Mux
 	sessionStore gsessions.Store
 	templates    templateStore
@@ -67,7 +67,7 @@ func NewWebApp(config *ini.File) (webApp *WebApp, err error) {
 	if err != nil {
 		return
 	}
-	webApp.database = *database
+	webApp.database = database
 
 	// Initialize mux
 	webApp.mux = goji.NewMux()

@@ -37,7 +37,7 @@ import (
 // authentication server.
 type AuthApp struct {
 	config        *ini.File
-	database      Database
+	database      *Database
 	sessions      sessions
 	sessionsMutex sync.Mutex
 }
@@ -68,7 +68,7 @@ func NewAuthApp(config *ini.File) (authApp *AuthApp, err error) {
 	if err != nil {
 		return
 	}
-	authApp.database = *database
+	authApp.database = database
 
 	// Initialize session store
 	authApp.sessions = make(sessions)
