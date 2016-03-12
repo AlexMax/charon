@@ -24,8 +24,6 @@ import (
 	"html/template"
 	"net/http"
 
-	"golang.org/x/net/context"
-
 	"github.com/go-ini/ini"
 	gcontext "github.com/gorilla/context"
 	gsessions "github.com/gorilla/sessions"
@@ -41,12 +39,10 @@ type TemplateDefs map[string]TemplateNames
 // directory, and end with a ".tmpl" extension.
 type TemplateNames []string
 
-type templateStore map[string]*template.Template
+// FormErrors contains a list of errors keyed on their struct names.
+type FormErrors map[string]string
 
-var baseTemplates = TemplateDefs{
-	"home":  TemplateNames{"layout", "header", "home"},
-	"login": TemplateNames{"layout", "header", "login"},
-}
+type templateStore map[string]*template.Template
 
 const sessionName = "session"
 
@@ -78,10 +74,11 @@ func NewWebApp(config *ini.File) (webApp *WebApp, err error) {
 
 	// Initialize session store
 	webApp.sessionStore = gsessions.NewCookieStore([]byte("secret"))
+	gob.Register(User{})
 
 	// Compile templates
 	webApp.templates = make(templateStore)
-	err = webApp.AddTemplateDefs(&baseTemplates)
+	err = webApp.AddTemplateDefs(&BaseTemplates)
 	if err != nil {
 		return
 	}
@@ -90,8 +87,8 @@ func NewWebApp(config *ini.File) (webApp *WebApp, err error) {
 	webApp.mux.Use(gcontext.ClearHandler)
 
 	// Base routes
-	webApp.mux.HandleFunc(pat.New("/"), webApp.home)
-	webApp.mux.HandleFuncC(pat.New("/login"), webApp.login)
+	webApp.mux.HandleFunc(pat.New("/"), webApp.Home)
+	webApp.mux.HandleFuncC(pat.New("/login"), webApp.Login)
 	webApp.mux.Handle(pat.New("/assets/*"), http.StripPrefix("/assets/", http.FileServer(http.Dir("assets"))))
 
 	return
@@ -148,72 +145,5 @@ func (webApp *WebApp) RenderTemplate(res *http.ResponseWriter, req *http.Request
 	if err != nil {
 		http.Error(*res, err.Error(), 500)
 		return
-	}
-}
-
-// Renders the homepage.
-func (webApp *WebApp) home(res http.ResponseWriter, req *http.Request) {
-	webApp.RenderTemplate(&res, req, "home", nil)
-}
-
-type LoginData struct {
-	Form   *LoginForm
-	Errors FormErrors
-}
-
-func NewLoginData(req *http.Request) (data *LoginData) {
-	data = &LoginData{}
-
-	if req != nil {
-		data.Form = &LoginForm{
-			Login:    req.PostFormValue("login"),
-			Password: req.PostFormValue("password"),
-		}
-	} else {
-		data.Form = &LoginForm{}
-	}
-
-	return
-}
-
-func (webApp *WebApp) login(ctx context.Context, res http.ResponseWriter, req *http.Request) {
-	data := NewLoginData(req)
-
-	if req.Method != "GET" {
-		// Validate the form
-		data.Form = &LoginForm{
-			Login:    req.PostFormValue("login"),
-			Password: req.PostFormValue("password"),
-		}
-		var user *User
-		user, data.Errors = data.Form.Validate(&webApp.database)
-		if len(data.Errors) > 0 {
-			webApp.RenderTemplate(&res, req, "login", data)
-			return
-		}
-
-		// We have a user, but we don't actually want to store the salt or
-		// verifier in the session, so blank them out.
-		user.Salt = []byte("")
-		user.Verifier = []byte("")
-
-		// Store user in the session.
-		session, err := webApp.sessionStore.Get(req, sessionName)
-		if err != nil {
-			http.Error(res, err.Error(), 500)
-			return
-		}
-		gob.Register(User{})
-		session.Values["User"] = *user
-		err = session.Save(req, res)
-		if err != nil {
-			http.Error(res, err.Error(), 500)
-			return
-		}
-
-		// Redirect to the front page.
-		http.Redirect(res, req, "/", 302)
-	} else {
-		webApp.RenderTemplate(&res, req, "login", data)
 	}
 }
