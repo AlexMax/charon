@@ -69,11 +69,15 @@ CREATE TABLE IF NOT EXISTS Profiles(
 	UserId INTEGER
 );`
 
+var connectMutex sync.Mutex
+
 // NewDatabase creates a new Database instance.
 func NewDatabase(config *ini.File) (database *Database, err error) {
 	// Create a database connection.
 	filename := config.Section("database").Key("filename").MustString(":memory:")
+	connectMutex.Lock()
 	db, err := sqlx.Connect("sqlite3", filename)
+	connectMutex.Unlock()
 	if err != nil {
 		return
 	}
