@@ -77,7 +77,7 @@ func NewAuthApp(config *ini.File) (authApp *AuthApp, err error) {
 }
 
 // ListenAndServe starts the auth server app.
-func (self *AuthApp) ListenAndServe(addr string) (err error) {
+func (authApp *AuthApp) ListenAndServe(addr string) (err error) {
 	listenaddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		return
@@ -98,13 +98,13 @@ func (self *AuthApp) ListenAndServe(addr string) (err error) {
 		}
 
 		req := request{msgaddr, message[:msglen]}
-		go self.requestHandler(conn, &req)
+		go authApp.requestHandler(conn, &req)
 	}
 }
 
-func (self *AuthApp) requestHandler(conn *net.UDPConn, req *request) {
+func (authApp *AuthApp) requestHandler(conn *net.UDPConn, req *request) {
 	// Select callback function to route to.
-	route, err := self.router(req)
+	route, err := authApp.router(req)
 	if err != nil {
 		log.Printf("[DEBUG] %s", err.Error())
 		return
@@ -125,7 +125,7 @@ func (self *AuthApp) requestHandler(conn *net.UDPConn, req *request) {
 	}
 }
 
-func (self *AuthApp) router(req *request) (route routeFunc, err error) {
+func (authApp *AuthApp) router(req *request) (route routeFunc, err error) {
 	if len(req.message) < 4 {
 		err = errors.New("Message is too small")
 		return
@@ -135,11 +135,11 @@ func (self *AuthApp) router(req *request) (route routeFunc, err error) {
 	header := binary.LittleEndian.Uint32(req.message[:4])
 	switch header {
 	case CharonServerNegotiate:
-		route = self.handleNegotiate
+		route = authApp.handleNegotiate
 	case CharonServerEphemeral:
-		route = self.handleEphemeral
+		route = authApp.handleEphemeral
 	case CharonServerProof:
-		route = self.handleProof
+		route = authApp.handleProof
 	default:
 		err = errors.New("Invalid packet type")
 	}
@@ -148,7 +148,7 @@ func (self *AuthApp) router(req *request) (route routeFunc, err error) {
 }
 
 // Handle initial negotiation
-func (self *AuthApp) handleNegotiate(req *request) (res response, err error) {
+func (authApp *AuthApp) handleNegotiate(req *request) (res response, err error) {
 	var packet ServerNegotiate
 	err = packet.UnmarshalBinary(req.message)
 	if err != nil {
@@ -156,7 +156,7 @@ func (self *AuthApp) handleNegotiate(req *request) (res response, err error) {
 	}
 
 	// Ensure that the user exists.
-	user, err := self.database.FindUser(packet.username)
+	user, err := authApp.database.FindUser(packet.username)
 	if err != nil {
 		return
 	}
@@ -179,16 +179,16 @@ func (self *AuthApp) handleNegotiate(req *request) (res response, err error) {
 	if err != nil {
 		return
 	}
-	self.sessionsMutex.Lock()
-	self.sessions[sessionID] = srpo.NewServerSession(
+	authApp.sessionsMutex.Lock()
+	authApp.sessions[sessionID] = srpo.NewServerSession(
 		[]byte(user.Username), user.Salt, user.Verifier)
-	self.sessionsMutex.Unlock()
+	authApp.sessionsMutex.Unlock()
 	go func() {
 		// Time out session after a few seconds
 		time.Sleep(time.Second * 5)
-		self.sessionsMutex.Lock()
-		delete(self.sessions, sessionID)
-		self.sessionsMutex.Unlock()
+		authApp.sessionsMutex.Lock()
+		delete(authApp.sessions, sessionID)
+		authApp.sessionsMutex.Unlock()
 	}()
 
 	// Assemble response
@@ -210,7 +210,7 @@ func (self *AuthApp) handleNegotiate(req *request) (res response, err error) {
 }
 
 // Handle SRP ephemeral exchange
-func (self *AuthApp) handleEphemeral(req *request) (res response, err error) {
+func (authApp *AuthApp) handleEphemeral(req *request) (res response, err error) {
 	var packet ServerEphemeral
 	err = packet.UnmarshalBinary(req.message)
 	if err != nil {
@@ -218,10 +218,10 @@ func (self *AuthApp) handleEphemeral(req *request) (res response, err error) {
 	}
 
 	// Get session if it exists
-	self.sessionsMutex.Lock()
-	session, exists := self.sessions[packet.session]
+	authApp.sessionsMutex.Lock()
+	session, exists := authApp.sessions[packet.session]
 	if exists == false {
-		self.sessionsMutex.Unlock()
+		authApp.sessionsMutex.Unlock()
 		err = errors.New("session does not exist")
 		return
 	}
@@ -229,11 +229,11 @@ func (self *AuthApp) handleEphemeral(req *request) (res response, err error) {
 	// Save client A and generate B
 	_, err = session.ComputeKey(packet.ephemeral)
 	if err != nil {
-		self.sessionsMutex.Unlock()
+		authApp.sessionsMutex.Unlock()
 		return
 	}
 	serverEphemeral := session.GetB()
-	self.sessionsMutex.Unlock()
+	authApp.sessionsMutex.Unlock()
 
 	// Assemble response
 	var resPacket AuthEphemeral
@@ -251,7 +251,7 @@ func (self *AuthApp) handleEphemeral(req *request) (res response, err error) {
 }
 
 // Handle SRP proof exchange
-func (self *AuthApp) handleProof(req *request) (res response, err error) {
+func (authApp *AuthApp) handleProof(req *request) (res response, err error) {
 	var packet ServerProof
 	err = packet.UnmarshalBinary(req.message)
 	if err != nil {
@@ -259,17 +259,17 @@ func (self *AuthApp) handleProof(req *request) (res response, err error) {
 	}
 
 	// Get session if it exists
-	self.sessionsMutex.Lock()
-	session, exists := self.sessions[packet.session]
+	authApp.sessionsMutex.Lock()
+	session, exists := authApp.sessions[packet.session]
 	if exists == false {
-		self.sessionsMutex.Unlock()
+		authApp.sessionsMutex.Unlock()
 		err = errors.New("session does not exist")
 		return
 	}
 
 	// Verify the client's M1 and generate M2
 	if session.VerifyClientAuthenticator(packet.proof) == false {
-		self.sessionsMutex.Unlock()
+		authApp.sessionsMutex.Unlock()
 
 		// Authentication failed
 		var resPacket SessionError
@@ -286,7 +286,7 @@ func (self *AuthApp) handleProof(req *request) (res response, err error) {
 		return res, err
 	}
 	serverProof := session.ComputeAuthenticator(packet.proof)
-	self.sessionsMutex.Unlock()
+	authApp.sessionsMutex.Unlock()
 
 	// Assemble response
 	var resPacket AuthProof
