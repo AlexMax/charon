@@ -49,11 +49,30 @@ type ServerNegotiate struct {
 func (packet *ServerNegotiate) MarshalBinary() (data []byte, err error) {
 	var buffer bytes.Buffer
 
-	binary.Write(&buffer, binary.LittleEndian, CharonServerNegotiate)
-	binary.Write(&buffer, binary.LittleEndian, packet.version)
-	binary.Write(&buffer, binary.LittleEndian, packet.clientSession)
-	buffer.WriteString(packet.username)
-	buffer.WriteByte(0)
+	err = binary.Write(&buffer, binary.LittleEndian, CharonServerNegotiate)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.version)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.clientSession)
+	if err != nil {
+		return
+	}
+
+	_, err = buffer.WriteString(packet.username)
+	if err != nil {
+		return
+	}
+
+	err = buffer.WriteByte(0)
+	if err != nil {
+		return
+	}
 
 	data = buffer.Bytes()
 	return
@@ -114,14 +133,45 @@ type AuthNegotiate struct {
 func (packet *AuthNegotiate) MarshalBinary() (data []byte, err error) {
 	var buffer bytes.Buffer
 
-	binary.Write(&buffer, binary.LittleEndian, CharonAuthNegotiate)
-	binary.Write(&buffer, binary.LittleEndian, packet.version)
-	binary.Write(&buffer, binary.LittleEndian, packet.clientSession)
-	binary.Write(&buffer, binary.LittleEndian, packet.session)
-	binary.Write(&buffer, binary.LittleEndian, uint8(len(packet.salt)))
-	binary.Write(&buffer, binary.LittleEndian, packet.salt)
-	buffer.WriteString(packet.username)
-	buffer.WriteByte(0)
+	err = binary.Write(&buffer, binary.LittleEndian, CharonAuthNegotiate)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.version)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.clientSession)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.session)
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, uint8(len(packet.salt)))
+	if err != nil {
+		return
+	}
+
+	err = binary.Write(&buffer, binary.LittleEndian, packet.salt)
+	if err != nil {
+		return
+	}
+
+	_, err = buffer.WriteString(packet.username)
+	if err != nil {
+		return
+	}
+
+	err = buffer.WriteByte(0)
+	if err != nil {
+		return
+	}
 
 	data = buffer.Bytes()
 	return
