@@ -19,8 +19,9 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"math/big"
 	"os"
 
 	"github.com/AlexMax/charon"
@@ -58,7 +59,11 @@ func addUser(cmd *cli.Cmd) {
 
 		password := make([]byte, passwordLength)
 		for i := range password {
-			password[i] = passwordLetters[rand.Intn(len(passwordLetters))]
+			randomLetter, err := rand.Int(rand.Reader, big.NewInt(int64(len(passwordLetters))))
+			if err != nil {
+				fmt.Printf("crypto/rand.Int() error: %s", err.Error())
+			}
+			password[i] = passwordLetters[randomLetter.Uint64()]
 		}
 		sPassword := string(password)
 
