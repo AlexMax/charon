@@ -21,6 +21,7 @@ package charon
 import (
 	"crypto/sha256"
 	"errors"
+	"io/ioutil"
 	"strings"
 	"sync"
 	"time"
@@ -88,6 +89,23 @@ func NewDatabase(config *ini.File) (database *Database, err error) {
 
 	database = new(Database)
 	database.db = db
+	return
+}
+
+// Import executes a file containing SQL statements on the loaded database.
+func (database *Database) Import(paths ...string) (err error) {
+	for _, path := range paths {
+		data, err := ioutil.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		_, err = database.db.Exec(string(data))
+		if err != nil {
+			return err
+		}
+	}
+
 	return
 }
 

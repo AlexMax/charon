@@ -37,7 +37,7 @@ func TestAddUser(t *testing.T) {
 		t.Errorf("%s", err.Error())
 	}
 
-	err = database.AddUser("username", "charontest@mailinator.com", "password")
+	err = database.AddUser("TestUser", "testuser@example.com", "VsGnJghDUW6C")
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}
@@ -49,12 +49,29 @@ func TestFindUser(t *testing.T) {
 		t.Errorf("%s", err.Error())
 	}
 
-	err = database.AddUser("username", "charontest@mailinator.com", "password")
+	database.Import("fixture/user.sql")
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}
 
-	_, err = database.FindUser("username")
+	_, err = database.FindUser("TestUser")
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
+}
+
+func TestLoginUser(t *testing.T) {
+	database, err := NewDatabase(ini.Empty())
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
+
+	database.Import("fixture/user.sql")
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
+
+	_, err = database.LoginUser("TestUser", "VsGnJghDUW6C")
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}
