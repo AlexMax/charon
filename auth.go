@@ -30,13 +30,12 @@ import (
 	"time"
 
 	"github.com/AlexMax/charon/srp"
-	"github.com/go-ini/ini"
 )
 
 // AuthApp contains all state for a single instance of the
 // authentication server.
 type AuthApp struct {
-	config        *ini.File
+	config        *Config
 	database      *Database
 	sessions      sessions
 	sessionsMutex sync.Mutex
@@ -57,7 +56,7 @@ type response struct {
 type routeFunc func(*request) (response, error)
 
 // NewAuthApp creates a new instance of the auth server app.
-func NewAuthApp(config *ini.File) (authApp *AuthApp, err error) {
+func NewAuthApp(config *Config) (authApp *AuthApp, err error) {
 	authApp = new(AuthApp)
 
 	// Attach configuration

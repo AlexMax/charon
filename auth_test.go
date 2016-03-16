@@ -21,15 +21,13 @@ package charon
 import (
 	"net"
 	"testing"
-
-	"github.com/go-ini/ini"
 )
 
 func TestRouterShortMessage(t *testing.T) {
 	addr, _ := net.ResolveUDPAddr("udp4", "127.0.0.1:16667")
 	req := request{addr, []byte("\x01")}
 
-	app, err := NewAuthApp(ini.Empty())
+	app, err := NewAuthApp(NewConfig(nil))
 	_, err = app.router(&req)
 	if err == nil {
 		t.Errorf("%v was incorrectly routed as valid request", req)
@@ -48,7 +46,7 @@ func TestRouterHandleNegotiate(t *testing.T) {
 	actual, _ := packet.MarshalBinary()
 
 	// Create auth app with fixture
-	app, err := NewAuthApp(ini.Empty())
+	app, err := NewAuthApp(NewConfig(nil))
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}

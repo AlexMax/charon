@@ -30,10 +30,11 @@ func main() {
 	log.Print("Starting Charon...")
 
 	// Load configuration
-	config, err := ini.Load("charon.ini")
+	iniFile, err := ini.Load("charon.ini")
 	if err != nil {
 		log.Fatal(err)
 	}
+	config := charon.NewConfig(iniFile)
 
 	// Start Authenticator
 	go func() {

@@ -24,7 +24,6 @@ import (
 	"html/template"
 	"net/http"
 
-	"github.com/go-ini/ini"
 	gcontext "github.com/gorilla/context"
 	gsessions "github.com/gorilla/sessions"
 	"goji.io"
@@ -48,7 +47,7 @@ const sessionName = "session"
 
 // WebApp contains all state for a single instance of the webserver.
 type WebApp struct {
-	config       *ini.File
+	config       *Config
 	database     *Database
 	mux          *goji.Mux
 	sessionStore gsessions.Store
@@ -56,7 +55,7 @@ type WebApp struct {
 }
 
 // NewWebApp creates a new instance of the web server app.
-func NewWebApp(config *ini.File) (webApp *WebApp, err error) {
+func NewWebApp(config *Config) (webApp *WebApp, err error) {
 	webApp = new(WebApp)
 
 	// Attach configuration
@@ -135,9 +134,11 @@ func (webApp *WebApp) RenderTemplate(res http.ResponseWriter, req *http.Request,
 
 	allData := struct {
 		Session map[interface{}]interface{}
+		Config  *Config
 		Data    interface{}
 	}{
 		session.Values,
+		webApp.config,
 		data,
 	}
 

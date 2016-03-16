@@ -18,21 +18,17 @@
 
 package charon
 
-import (
-	"testing"
-
-	"github.com/go-ini/ini"
-)
+import "testing"
 
 func TestNewDatabase(t *testing.T) {
-	_, err := NewDatabase(ini.Empty())
+	_, err := NewDatabase(NewConfig(nil))
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}
 }
 
 func TestAddUser(t *testing.T) {
-	database, err := NewDatabase(ini.Empty())
+	database, err := NewDatabase(NewConfig(nil))
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}
@@ -44,7 +40,7 @@ func TestAddUser(t *testing.T) {
 }
 
 func TestFindUser(t *testing.T) {
-	database, err := NewDatabase(ini.Empty())
+	database, err := NewDatabase(NewConfig(nil))
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}
@@ -61,7 +57,7 @@ func TestFindUser(t *testing.T) {
 }
 
 func TestLoginUser(t *testing.T) {
-	database, err := NewDatabase(ini.Empty())
+	database, err := NewDatabase(NewConfig(nil))
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}

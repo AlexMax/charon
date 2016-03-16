@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/AlexMax/charon/srp"
-	"github.com/go-ini/ini"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3" // Database driver
 )
@@ -73,9 +72,9 @@ CREATE TABLE IF NOT EXISTS Profiles(
 var connectMutex sync.Mutex
 
 // NewDatabase creates a new Database instance.
-func NewDatabase(config *ini.File) (database *Database, err error) {
+func NewDatabase(config *Config) (database *Database, err error) {
 	// Create a database connection.
-	filename := config.Section("database").Key("filename").MustString(":memory:")
+	filename := config.Database.Filename
 	connectMutex.Lock()
 	db, err := sqlx.Connect("sqlite3", filename)
 	connectMutex.Unlock()

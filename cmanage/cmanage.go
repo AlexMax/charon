@@ -45,11 +45,12 @@ func addUser(cmd *cli.Cmd) {
 	email := cmd.StringArg("EMAIL", "", "Email of the new user")
 
 	cmd.Action = func() {
-		config, err := ini.Load(*configPath)
+		iniFile, err := ini.Load(*configPath)
 		if err != nil {
 			fmt.Print(err)
 			os.Exit(1)
 		}
+		config := charon.NewConfig(iniFile)
 
 		db, err := charon.NewDatabase(config)
 		if err != nil {
