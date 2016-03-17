@@ -132,6 +132,10 @@ const (
 
 // AddUser adds a new user.
 func (database *Database) AddUser(username string, email string, password string) (err error) {
+	// Username and email are forced lowercase
+	username = strings.ToLower(username)
+	email = strings.ToLower(email)
+
 	// Must be unique
 	var count int
 	database.mutex.Lock()
@@ -170,15 +174,21 @@ func (database *Database) AddUser(username string, email string, password string
 
 // FindUser tries to find a specific user by name or email address.
 func (database *Database) FindUser(username string) (user *User, err error) {
+	// Username is forced lowercase
+	username = strings.ToLower(username)
+
 	user = &User{}
 	database.mutex.Lock()
-	err = database.db.Get(user, "SELECT * FROM users WHERE username LIKE $1 OR email LIKE $1", strings.ToLower(username))
+	err = database.db.Get(user, "SELECT * FROM users WHERE username = $1 OR email = $1", strings.ToLower(username))
 	database.mutex.Unlock()
 	return
 }
 
 // LoginUser tries to log a user in with the passed username and password.
 func (database *Database) LoginUser(username string, password string) (user *User, err error) {
+	// Username is forced lowercase
+	username = strings.ToLower(username)
+
 	user, err = database.FindUser(username)
 	if err != nil {
 		return
