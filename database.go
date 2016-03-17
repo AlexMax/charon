@@ -132,6 +132,18 @@ const (
 
 // AddUser adds a new user.
 func (database *Database) AddUser(username string, email string, password string) (err error) {
+	// Must be unique
+	var count int
+	database.mutex.Lock()
+	err = database.db.Get(&count, "SELECT COUNT(*) FROM Users WHERE Username = ?", username)
+	database.mutex.Unlock()
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return errors.New("charon: username is not unique")
+	}
+
 	srp, err := srp.NewSRP("rfc5054.2048", sha256.New, nil)
 	if err != nil {
 		return err

@@ -39,13 +39,30 @@ func TestAddUser(t *testing.T) {
 	}
 }
 
+func TestAddUserErrors(t *testing.T) {
+	database, err := NewDatabase(NewConfig(nil))
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
+
+	err = database.Import("fixture/user.sql")
+	if err != nil {
+		t.Errorf("%s", err.Error())
+	}
+
+	err = database.AddUser("TestUser", "testuser@example.com", "VsGnJghDUW6C")
+	if err == nil {
+		t.Errorf("Username is not unique")
+	}
+}
+
 func TestFindUser(t *testing.T) {
 	database, err := NewDatabase(NewConfig(nil))
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}
 
-	database.Import("fixture/user.sql")
+	err = database.Import("fixture/user.sql")
 	if err != nil {
 		t.Errorf("%s", err.Error())
 	}
