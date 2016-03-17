@@ -52,7 +52,7 @@ func TestAddUserErrors(t *testing.T) {
 
 	err = database.AddUser("TestUser", "testuser@example.com", "VsGnJghDUW6C")
 	if err == nil {
-		t.Errorf("Username is not unique")
+		t.Errorf("charon: user added despite uniqueness constraint")
 	}
 }
 
